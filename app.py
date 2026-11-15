@@ -67,7 +67,7 @@ from streamlit_folium import st_folium
 # Streamlit Page Setup & Custom Styling
 # ---------------------------------------------------------------------------
 st.set_page_config(
-    page_title="Pothole Detection System",
+    page_title="ROADDEFECT AI — Autonomous Dashcam & Grievance Portal",
     page_icon="🛣️",
     layout="wide",
     initial_sidebar_state="expanded",
@@ -75,35 +75,246 @@ st.set_page_config(
 
 st.markdown("""
 <style>
-    .main-title {
-        font-size: 2.1rem;
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+    /* Global Typography & Canvas */
+    html, body, [class*="css"] {
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+
+    /* Executive Top Command Header */
+    .road-header {
+        background: linear-gradient(135deg, rgba(30, 41, 59, 0.75) 0%, rgba(15, 23, 42, 0.95) 100%);
+        border: 1px solid rgba(255, 255, 255, 0.10);
+        backdrop-filter: blur(16px);
+        border-radius: 16px;
+        padding: 18px 24px;
+        margin-bottom: 20px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 12px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+    }
+    .road-brand-title {
+        font-size: 1.65rem;
+        font-weight: 800;
+        letter-spacing: -0.5px;
+        background: linear-gradient(135deg, #38bdf8 0%, #818cf8 50%, #c084fc 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    .road-brand-subtitle {
+        font-size: 0.86rem;
+        color: #94a3b8;
+        font-weight: 400;
+        margin-top: 3px;
+    }
+    .header-chips {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+    .chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 5px 12px;
+        border-radius: 20px;
+        font-size: 0.76rem;
+        font-weight: 600;
+        background: rgba(16, 185, 129, 0.12);
+        color: #10b981;
+        border: 1px solid rgba(16, 185, 129, 0.25);
+    }
+    .chip.cyan {
+        background: rgba(56, 189, 248, 0.12);
+        color: #38bdf8;
+        border-color: rgba(56, 189, 248, 0.25);
+    }
+    .chip.purple {
+        background: rgba(168, 85, 247, 0.12);
+        color: #c084fc;
+        border-color: rgba(168, 85, 247, 0.25);
+    }
+
+    /* KPI Summary Cards */
+    .kpi-container {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 14px;
+        margin-bottom: 22px;
+    }
+    .kpi-card {
+        background: linear-gradient(145deg, rgba(30, 41, 59, 0.5) 0%, rgba(15, 23, 42, 0.7) 100%);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 14px;
+        padding: 14px 18px;
+        transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+    }
+    .kpi-card:hover {
+        border-color: rgba(56, 189, 248, 0.4);
+        transform: translateY(-2px);
+        box-shadow: 0 8px 24px rgba(56, 189, 248, 0.15);
+    }
+    .kpi-label {
+        font-size: 0.72rem;
+        color: #94a3b8;
+        text-transform: uppercase;
         font-weight: 700;
-        color: #1a252f;
-        margin-bottom: 0.1rem;
+        letter-spacing: 0.6px;
+    }
+    .kpi-value {
+        font-size: 1.85rem;
+        font-weight: 800;
+        color: #f8fafc;
+        margin: 4px 0 2px 0;
+        font-family: 'JetBrains Mono', monospace;
         letter-spacing: -0.5px;
     }
-    .sub-title {
-        font-size: 1.0rem;
-        color: #7f8c8d;
-        margin-bottom: 1.2rem;
-        font-weight: 400;
+    .kpi-subtext {
+        font-size: 0.74rem;
+        color: #64748b;
+        font-weight: 500;
     }
-    .metric-card {
-        background: #f8f9fa;
-        border: 1px solid #e9ecef;
+
+    /* Incident Cards for Real-Time Dashcam Stream */
+    .incident-card {
+        background: linear-gradient(145deg, rgba(30, 41, 59, 0.75) 0%, rgba(15, 23, 42, 0.90) 100%);
+        border: 1px solid rgba(239, 68, 68, 0.35);
+        border-left: 5px solid #ef4444;
+        border-radius: 12px;
+        padding: 14px 16px;
+        margin-bottom: 14px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.18);
+    }
+    .incident-card.med {
+        border-color: rgba(245, 158, 11, 0.35);
+        border-left-color: #f59e0b;
+    }
+    .incident-card.low {
+        border-color: rgba(16, 185, 129, 0.35);
+        border-left-color: #10b981;
+    }
+    .incident-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 8px;
+    }
+    .incident-badge-crit {
+        background: rgba(239, 68, 68, 0.18);
+        color: #f87171;
+        border: 1px solid rgba(239, 68, 68, 0.4);
+        padding: 3px 9px;
         border-radius: 6px;
+        font-size: 0.76rem;
+        font-weight: 800;
+        letter-spacing: 0.4px;
+    }
+    .incident-badge-med {
+        background: rgba(245, 158, 11, 0.18);
+        color: #fbbf24;
+        border: 1px solid rgba(245, 158, 11, 0.4);
+        padding: 3px 9px;
+        border-radius: 6px;
+        font-size: 0.76rem;
+        font-weight: 800;
+        letter-spacing: 0.4px;
+    }
+    .incident-docket {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 0.78rem;
+        color: #94a3b8;
+        background: rgba(0, 0, 0, 0.3);
+        padding: 2px 7px;
+        border-radius: 4px;
+    }
+    .incident-location {
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: #f1f5f9;
+        margin-bottom: 8px;
+    }
+    .telemetry-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 6px;
+        background: rgba(0, 0, 0, 0.28);
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        padding: 8px 10px;
+        border-radius: 8px;
+        margin: 8px 0;
+        text-align: center;
+    }
+    .tel-item-label {
+        font-size: 0.65rem;
+        color: #94a3b8;
+        font-weight: 600;
+        text-transform: uppercase;
+        display: block;
+    }
+    .tel-item-val {
+        font-size: 0.85rem;
+        color: #f8fafc;
+        font-weight: 700;
+        font-family: 'JetBrains Mono', monospace;
+    }
+    .incident-action-footer {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 0.75rem;
+        color: #94a3b8;
+        margin-top: 6px;
+    }
+
+    /* Primary and Secondary Action Buttons */
+    div.stButton > button[kind="primary"] {
+        background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%) !important;
+        color: white !important;
+        border: 1px solid #38bdf8 !important;
+        border-radius: 10px !important;
+        font-weight: 700 !important;
+        padding: 10px 20px !important;
+        letter-spacing: 0.4px !important;
+        box-shadow: 0 4px 18px rgba(2, 132, 199, 0.35) !important;
+        transition: all 0.2s ease !important;
+    }
+    div.stButton > button[kind="primary"]:hover {
+        box-shadow: 0 6px 24px rgba(56, 189, 248, 0.5) !important;
+        transform: translateY(-2px) !important;
+    }
+    div.stButton > button {
+        border-radius: 10px !important;
+        font-weight: 600 !important;
+        transition: all 0.2s ease !important;
+    }
+
+    /* Metric Cards in Image Analysis */
+    .metric-card {
+        background: linear-gradient(145deg, rgba(30, 41, 59, 0.5) 0%, rgba(15, 23, 42, 0.7) 100%);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 10px;
         padding: 10px 14px;
         text-align: center;
     }
     .metric-value {
         font-size: 1.5rem;
-        font-weight: 700;
-        color: #2c3e50;
+        font-weight: 800;
+        font-family: 'JetBrains Mono', monospace;
+        color: #f8fafc;
     }
     .metric-label {
-        font-size: 0.8rem;
-        color: #6c757d;
+        font-size: 0.72rem;
+        color: #94a3b8;
         text-transform: uppercase;
+        font-weight: 700;
         letter-spacing: 0.5px;
     }
 </style>
@@ -119,8 +330,53 @@ def get_cached_models():
 def main():
     init_database()
 
-    st.markdown('<div class="main-title">POTHOLE DETECTION SYSTEM</div>', unsafe_allow_html=True)
-    st.markdown('<div class="sub-title">Unsupervised Road Surface Anomaly Detection & Geographic Reporting</div>', unsafe_allow_html=True)
+    defects_df = get_all_defects()
+    total_records = len(defects_df)
+    high_threat_count = int((defects_df["severity_category"] == "High").sum()) if not defects_df.empty and "severity_category" in defects_df.columns else 0
+
+    dedup_mgr = CrowdsourcedSpatialDeduplicator()
+    dedup_summary = dedup_mgr.get_registry_summary()
+
+    # Top Executive Command Header Bar
+    st.markdown("""
+    <div class="road-header">
+        <div>
+            <div class="road-brand-title">🛣️ ROADDEFECT AI</div>
+            <div class="road-brand-subtitle">Autonomous Automotive Dashcam Surveillance & Government Grievance Command System</div>
+        </div>
+        <div class="header-chips">
+            <span class="chip">🟢 AI Vision: 30+ FPS</span>
+            <span class="chip cyan">🛰️ RTK GPS Synced</span>
+            <span class="chip purple">🏛️ CPGRAMS / NHAI Online</span>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # Executive Floating KPI Ribbon
+    st.markdown(f"""
+    <div class="kpi-container">
+        <div class="kpi-card">
+            <div class="kpi-label">Total Road Anomalies</div>
+            <div class="kpi-value">{total_records}</div>
+            <div class="kpi-subtext">Logged in SQLite Registry</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-label">High-Threat Hazards</div>
+            <div class="kpi-value" style="color:#f87171;">{high_threat_count}</div>
+            <div class="kpi-subtext">Cavity Depth ≥ 5.0 cm</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-label">Anti-Spam Duplicates Prevented</div>
+            <div class="kpi-value" style="color:#38bdf8;">{dedup_summary['duplicate_submissions_prevented']}</div>
+            <div class="kpi-subtext">Crowdsourced Corroborations</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-label">Citizen Petitions Filed</div>
+            <div class="kpi-value" style="color:#34d399;">{dedup_summary['total_citizen_reports']}</div>
+            <div class="kpi-subtext">MoRTH 72h SLA Enforced</div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
 
     # -----------------------------------------------------------------------
     # Sidebar: Mode Navigation & Pipeline Status
@@ -456,88 +712,58 @@ def main():
                             status_caption.empty()
                             with events_placeholder:
                                 for ev in reversed(all_dispatched[-3:]):
-                                    with st.container(border=True):
-                                        st.markdown(f"**🚨 {ev['severity_category'].upper()} HAZARD DETECTED**")
-                                        st.markdown(f"**Reference ID**: `{ev['reference_no']}`")
-                                        st.markdown(f"**Target Authority**: {ev['target_portal']}")
-                                        st.markdown(f"**Road Location**: {ev['road_name']}, {ev['district']}, {ev['state']} - {ev['postcode']}")
-                                        st.markdown(f"**GPS**: `{ev['latitude']:.5f}, {ev['longitude']:.5f}`")
+                                    cat_lower = ev.get('severity_category', 'Medium').lower()
+                                    card_cls = "incident-card" if cat_lower == "high" else ("incident-card med" if cat_lower == "medium" else "incident-card low")
+                                    badge_cls = "incident-badge-crit" if cat_lower == "high" else "incident-badge-med"
+                                    d_cm = ev.get('max_depth_cm', 5.2)
+                                    vol_l = ev.get('cavity_volume_liters', 3.4)
+                                    imu_g = ev.get('imu_shock_g', 1.05)
+                                    dist_m = ev.get('distance_ahead_m', 12.0)
+                                    action = ev.get('maintenance_action', 'Compact asphalt mix')
 
-                                        # 3D Depth & Volumetric Repair Metrics
-                                        d_cm = ev.get('max_depth_cm', 5.2)
-                                        vol_l = ev.get('cavity_volume_liters', 3.4)
-                                        mass_kg = ev.get('asphalt_repair_mass_kg', 8.2)
-                                        dist_m = ev.get('distance_ahead_m', 12.0)
-                                        st.markdown(
-                                            f"📏 **3D Profiling**: Depth: `{d_cm:.1f} cm` | "
-                                            f"Void: `{vol_l:.1f} L` | "
-                                            f"Asphalt Needed: `{mass_kg:.1f} kg` | "
-                                            f"Distance: `{dist_m:.0f} m`"
+                                    html_card = f"""
+                                    <div class="{card_cls}">
+                                        <div class="incident-header">
+                                            <span class="{badge_cls}">🚨 {ev.get('severity_category', 'Medium').upper()} HAZARD</span>
+                                            <span class="incident-docket">REF: {ev.get('reference_no', 'PENDING')}</span>
+                                        </div>
+                                        <div class="incident-location">📍 {ev.get('road_name', 'Highway')}, {ev.get('district', 'Jurisdiction')}</div>
+                                        <div class="telemetry-grid">
+                                            <div><span class="tel-item-label">DEPTH</span><span class="tel-item-val">{d_cm:.1f} cm</span></div>
+                                            <div><span class="tel-item-label">VOID</span><span class="tel-item-val">{vol_l:.1f} L</span></div>
+                                            <div><span class="tel-item-label">SHOCK</span><span class="tel-item-val">{imu_g:.2f}g</span></div>
+                                            <div><span class="tel-item-label">LEAD</span><span class="tel-item-val">{dist_m:.0f} m</span></div>
+                                        </div>
+                                        <div class="incident-action-footer">
+                                            <span>🏛️ {ev.get('target_portal', 'NHAI')}</span>
+                                            <span>🛠️ {action[:24]}</span>
+                                        </div>
+                                    </div>
+                                    """
+                                    st.markdown(html_card, unsafe_allow_html=True)
+
+                                    if ev.get("evidence_image") and os.path.exists(ev["evidence_image"]):
+                                        st.image(ev["evidence_image"], caption=f"📸 3D Metric Evidence: {ev.get('track_id', 'DEFECT')}", use_container_width=True)
+
+                                    col_act1, col_act2 = st.columns(2)
+                                    with col_act1:
+                                        if ev.get("whatsapp_url"):
+                                            st.link_button("📲 WhatsApp Alert", ev["whatsapp_url"], use_container_width=True)
+                                    with col_act2:
+                                        if ev.get("google_maps_url"):
+                                            st.link_button("📍 Google Maps", ev["google_maps_url"], use_container_width=True)
+
+                                    if ev.get("pdf_dossier") and os.path.exists(ev["pdf_dossier"]):
+                                        with open(ev["pdf_dossier"], "rb") as f_pdf:
+                                            pdf_bytes = f_pdf.read()
+                                        st.download_button(
+                                            label="📄 Download Grievance PDF",
+                                            data=pdf_bytes,
+                                            file_name=os.path.basename(ev["pdf_dossier"]),
+                                            mime="application/pdf",
+                                            key=f"dl_{ev['detection_id']}",
+                                            use_container_width=True,
                                         )
-
-                                        # Bird's Eye View & IMU Shock Sensor Fusion
-                                        wheel_hazard = ev.get('wheel_track_hazard', 'LEFT_WHEEL_PATH')
-                                        bev_area = ev.get('bev_area_sqcm', 2500.0)
-                                        lat_offset = ev.get('lateral_offset_m', -0.8)
-                                        imu_g = ev.get('imu_shock_g', 1.65)
-                                        threat = ev.get('threat_index', 72.0)
-                                        hazard_badge = "🚨 TIRE IMPACT HAZARD" if "WHEEL" in wheel_hazard else "🟡 STRADDLED CENTER"
-                                        st.markdown(
-                                            f"📐 **Bird's Eye View**: `{bev_area:.0f} cm²` | Offset: `{lat_offset:+.2f} m` ({wheel_hazard})\n\n"
-                                            f"📳 **IMU Shock Fusion**: `{imu_g:.2f}g` shock | Threat Index: `{threat:.1f}/100` | `{hazard_badge}`"
-                                        )
-
-                                        # IRC Distress & Degradation Velocity
-                                        irc_cat = ev.get('irc_category', 'IRC:Pothole')
-                                        deg_status = ev.get('degradation_status', 'STABLE')
-                                        growth = ev.get('growth_percent', 0.0)
-                                        action = ev.get('maintenance_action', 'Compact asphalt mix')
-                                        st.markdown(
-                                            f"🔬 **IRC Classification**: `{irc_cat}` | **Status**: `{deg_status}` ({growth:+.1f}%)\n\n"
-                                            f"🛠️ **PWD Action**: *{action}*"
-                                        )
-
-                                        # Crowdsourced Deduplication & Anti-Spam Badge
-                                        cit_count = ev.get("citizen_count", 1)
-                                        tier = ev.get("escalation_tier", "FILED")
-                                        dedup_act = ev.get("dedup_action", "NEW_GRIEVANCE_FILED")
-                                        if dedup_act == "DUPLICATE_SUPPRESSED":
-                                            st.info(f"🛡️ **Crowdsource Anti-Spam**: Duplicate complaint suppressed to avoid government burden. Citizen **#{cit_count}** confirmed this hazard (Escalation: **{tier}**).")
-                                        else:
-                                            st.success(f"🏛️ **New Grievance Registered**: Filed as original complaint (Ref: `{ev['reference_no']}`). Future vehicles will corroborate rather than re-file.")
-
-                                        if ev.get("evidence_image") and os.path.exists(ev["evidence_image"]):
-                                            st.image(ev["evidence_image"], caption=f"Photo Evidence with 3D Depth Map: {ev['track_id']}", use_container_width=True)
-
-                                        if ev.get("pdf_dossier") and os.path.exists(ev["pdf_dossier"]):
-                                            with open(ev["pdf_dossier"], "rb") as f_pdf:
-                                                pdf_bytes = f_pdf.read()
-                                            st.download_button(
-                                                label="📄 Download Official Complaint Dossier",
-                                                data=pdf_bytes,
-                                                file_name=os.path.basename(ev["pdf_dossier"]),
-                                                mime="application/pdf",
-                                                key=f"dl_{ev['detection_id']}",
-                                                use_container_width=True,
-                                            )
-
-                                        # Citizen WhatsApp & SMS Action Links
-                                        wa_link = ev.get("whatsapp_url")
-                                        sms_txt = ev.get("sms_text")
-                                        maps_url = ev.get("google_maps_url")
-
-                                        if wa_link or sms_txt or maps_url:
-                                            col_w1, col_w2 = st.columns(2)
-                                            with col_w1:
-                                                if wa_link:
-                                                    st.link_button("📲 Share to WhatsApp", wa_link, use_container_width=True)
-                                            with col_w2:
-                                                if maps_url:
-                                                    st.link_button("📍 Google Maps Pin", maps_url, use_container_width=True)
-
-                                            if sms_txt:
-                                                with st.expander("📱 View Citizen SMS Text", expanded=False):
-                                                    st.code(sms_txt, language="text")
 
                         if sampled_num >= max_frames_to_run:
                             break

@@ -669,17 +669,30 @@ def main():
             with col_inp1:
                 input_mode = st.selectbox(
                     "Select Input Source:",
-                    ["Upload Image File", "Realistic Asphalt Benchmark", "Synthetic Dataset Sample", "Live Dashcam Snapshot"],
+                    [
+                        "Upload Image File (from Mobile / PC)",
+                        "Smartphone Camera (Direct Mobile Browser)",
+                        "Realistic Asphalt Benchmark",
+                        "Synthetic Dataset Sample",
+                    ],
                 )
 
                 image_bgr = None
                 image_name = "road_sample.jpg"
 
-                if input_mode == "Upload Image File":
+                if input_mode.startswith("Upload Image File"):
                     uploaded_file = st.file_uploader("Upload road image (JPG, PNG)", type=["jpg", "jpeg", "png"])
                     if uploaded_file is not None:
                         image_name = uploaded_file.name
                         file_bytes = np.asarray(bytearray(uploaded_file.read()), dtype=np.uint8)
+                        image_bgr = cv2.imdecode(file_bytes, cv2.IMREAD_COLOR)
+
+                elif input_mode.startswith("Smartphone Camera"):
+                    st.caption("📱 Tip: Open this website on your mobile phone browser (`http://<your-laptop-ip>:8501`) to snap potholes directly on the road.")
+                    cam_img = st.camera_input("Take Live Road Defect Photo")
+                    if cam_img is not None:
+                        image_name = "mobile_camera_pothole.jpg"
+                        file_bytes = np.asarray(bytearray(cam_img.read()), dtype=np.uint8)
                         image_bgr = cv2.imdecode(file_bytes, cv2.IMREAD_COLOR)
 
                 elif input_mode == "Realistic Asphalt Benchmark":
@@ -704,12 +717,7 @@ def main():
                             image_name = selected_sample
                             image_bgr = cv2.imread(os.path.join(sample_dir, selected_sample))
 
-                elif input_mode == "Live Dashcam Snapshot":
-                    cam_img = st.camera_input("Take Snapshot")
-                    if cam_img is not None:
-                        image_name = "dashcam_live.jpg"
-                        file_bytes = np.asarray(bytearray(cam_img.read()), dtype=np.uint8)
-                        image_bgr = cv2.imdecode(file_bytes, cv2.IMREAD_COLOR)
+
 
             with col_inp2:
                 if image_bgr is not None:

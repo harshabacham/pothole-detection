@@ -662,10 +662,6 @@ class VehicleDashcamAutoReporter:
                         f"Citizen #{citizen_count} corroborated existing grievance {ref_no}. "
                         f"Escalation: {escalation_tier}"
                     )
-                        f"[DEDUP] Duplicate complaint SUPPRESSED for {det_id}. "
-                        f"Citizen #{citizen_count} corroborated existing grievance {ref_no}. "
-                        f"Escalation: {escalation_tier}"
-                    )
 
                 event = {
                     "track_id": t_id,

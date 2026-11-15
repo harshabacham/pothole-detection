@@ -74,6 +74,12 @@ def parse_args():
         help="Max frames to process (useful for automated testing)",
     )
     parser.add_argument(
+        "--auto-dispatch",
+        action="store_true",
+        default=False,
+        help="Directly auto-submit to government portals without requiring manual citizen approval (Default: False - Record & Review mode)",
+    )
+    parser.add_argument(
         "--no-dispatch",
         action="store_true",
         help="Dry-run mode: logs defects to DB without submitting to government portal",
@@ -128,7 +134,7 @@ def main():
         target_portal=args.portal,
         min_severity=args.min_severity,
         confirmation_frames=args.confirmation_frames,
-        auto_dispatch=(not args.no_dispatch),
+        auto_dispatch=(args.auto_dispatch and not args.no_dispatch),
         sample_interval=args.sample_interval,
     )
 

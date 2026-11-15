@@ -177,6 +177,57 @@ def update_grievance_status(
     return success
 
 
+def disapprove_defect(
+    detection_id: str,
+    reason: str = "Disapproved by user (False Positive)",
+    db_path: str = None,
+) -> bool:
+    """
+    Mark a recorded defect as Disapproved / Rejected by the user.
+    Prevents it from being submitted to government portals.
+    """
+    conn = get_db_connection(db_path)
+    cursor = conn.cursor()
+    success = False
+
+    try:
+        now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        cursor.execute("""
+        UPDATE defect_records
+        SET grievance_status = 'Disapproved',
+            grievance_ref_no = 'REJECTED_BY_USER',
+            dispatched_portal = ?,
+            dispatched_at = ?
+        WHERE detection_id = ?
+        """, (reason, now_str, detection_id))
+        conn.commit()
+        success = (cursor.rowcount > 0)
+    except Exception as exc:
+        print(f"[ERROR] database: Failed to disapprove defect {detection_id}: {exc}")
+    finally:
+        conn.close()
+
+    return success
+
+
+def get_pending_review_defects(db_path: str = None) -> pd.DataFrame:
+    """
+    Retrieve all defect records currently awaiting user review / approval.
+    """
+    conn = get_db_connection(db_path)
+    try:
+        df = pd.read_sql_query(
+            "SELECT * FROM defect_records WHERE grievance_status IN ('Unreported', 'Pending Review') ORDER BY id DESC",
+            conn,
+        )
+    except Exception:
+        df = pd.DataFrame()
+    finally:
+        conn.close()
+
+    return df
+
+
 def get_all_defects(db_path: str = None) -> pd.DataFrame:
     """
     Retrieve all recorded defect entries as a pandas DataFrame.

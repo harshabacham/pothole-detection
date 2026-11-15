@@ -29,7 +29,14 @@ from src.dashboard_helpers import (
     check_pipeline_readiness,
 )
 from src.inference_pipeline import load_all_artifacts, run_inference_on_image
-from src.database import init_database, get_all_defects, insert_defect
+from src.database import (
+    init_database,
+    get_all_defects,
+    insert_defect,
+    update_grievance_status,
+    disapprove_defect,
+    get_pending_review_defects,
+)
 from src.map_visualization import build_geographic_map
 from src.video_processor import process_road_video
 from src.gis_export import (
@@ -482,6 +489,19 @@ def main():
         with col_ctl4:
             sample_rate = st.selectbox("Sampling Stride:", [2, 5, 10], index=1, format_func=lambda s: f"1 in {s} frames")
 
+        # Submission Policy: User Review vs Autonomous Auto-Dispatch
+        dispatch_policy = st.radio(
+            "Submission Policy:",
+            [
+                "Record & Review Mode (Auto-record location & details, user manually approves or disapproves)",
+                "Autonomous Auto-Dispatch (Instantly submit to government without confirmation)",
+            ],
+            index=0,
+            horizontal=True,
+            help="In Record & Review mode, all potholes, GPS coordinates, and photos are saved in the database, allowing you to review and approve/disapprove each one.",
+        )
+        auto_dispatch_val = "Autonomous Auto-Dispatch" in dispatch_policy
+
         custom_video_path = None
         if dashcam_src_mode.startswith("Auto-Detected Dashcam"):
             active_src = get_active_dashcam_source()
@@ -509,7 +529,7 @@ def main():
                     target_portal=target_portal_sel,
                     min_severity=min_sev_sel,
                     confirmation_frames=2,
-                    auto_dispatch=True,
+                    auto_dispatch=auto_dispatch_val,
                     sample_interval=sample_rate,
                     feature_mode=internal_feature_mode,
                 )
@@ -865,7 +885,8 @@ def main():
         gov_mode = st.radio(
             "Governance Module:",
             [
-                "Grievance Portal (CPGRAMS / NHAI)",
+                "Citizen Verification Queue (Approve / Disapprove)",
+                "Official Grievance Dossier (CPGRAMS / NHAI)",
                 "Municipal Work Orders & 72h SLA",
                 "Contractor Warranty & DLP Audit",
                 "Pavement Condition Index (PCI)",
@@ -875,7 +896,145 @@ def main():
 
         defects_df = get_all_defects()
 
-        if "Grievance" in gov_mode:
+        if "Citizen Verification Queue" in gov_mode:
+            st.markdown("##### Citizen Verification & Manual Approval Queue")
+            st.caption("Review automatically recorded road cavities before dispatching petitions to Government of India authorities. Reject false positives or approve verified hazards.")
+
+            if defects_df.empty:
+                st.info("No recorded potholes in the database yet. Run a Live Dashcam Survey or inspect sample images to populate records.")
+            else:
+                # Compute KPI statistics
+                status_series = defects_df["grievance_status"].fillna("Unreported")
+                pending_mask = status_series.isin(["Pending Review", "Unreported", "PORTAL_SYNC_QUEUED", "PENDING_USER_REVIEW"])
+                dispatched_mask = status_series.str.startswith("Dispatched", na=False)
+                disapproved_mask = status_series.str.startswith("Disapproved", na=False)
+
+                pending_df = defects_df[pending_mask]
+                dispatched_df = defects_df[dispatched_mask]
+                disapproved_df = defects_df[disapproved_mask]
+
+                c_kpi1, c_kpi2, c_kpi3, c_kpi4 = st.columns(4)
+                c_kpi1.metric("Total Recorded", len(defects_df))
+                c_kpi2.metric("Awaiting Approval", len(pending_df))
+                c_kpi3.metric("Approved & Dispatched", len(dispatched_df))
+                c_kpi4.metric("Disapproved (Rejected)", len(disapproved_df))
+
+                col_flt1, col_flt2 = st.columns([2, 1])
+                with col_flt1:
+                    filter_choice = st.selectbox(
+                        "Display Filter:",
+                        [
+                            f"Pending Review ({len(pending_df)})",
+                            f"Approved & Dispatched ({len(dispatched_df)})",
+                            f"Disapproved ({len(disapproved_df)})",
+                            f"All Records ({len(defects_df)})",
+                        ],
+                    )
+
+                if "Pending Review" in filter_choice:
+                    active_view_df = pending_df
+                elif "Approved" in filter_choice:
+                    active_view_df = dispatched_df
+                elif "Disapproved" in filter_choice:
+                    active_view_df = disapproved_df
+                else:
+                    active_view_df = defects_df
+
+                if active_view_df.empty:
+                    st.caption("No records found in this view category.")
+                else:
+                    st.markdown("---")
+                    for _, row in active_view_df.iterrows():
+                        det_id = row["detection_id"]
+                        status = row.get("grievance_status") or "Pending Review"
+                        cat = row.get("severity_category", "Medium")
+                        cat_lower = str(cat).lower()
+                        d_cm = float(row.get("bev_area_sqcm", 400.0) / 100.0) if pd.notnull(row.get("bev_area_sqcm")) else 5.2
+                        vol_l = round(d_cm * 0.65, 1)
+
+                        lat = float(row["latitude"]) if pd.notnull(row["latitude"]) else 28.5383
+                        lon = float(row["longitude"]) if pd.notnull(row["longitude"]) else 77.2431
+                        img_path = row.get("image_path")
+
+                        col_card_img, col_card_info, col_card_act = st.columns([1.1, 1.9, 1.4])
+
+                        with col_card_img:
+                            if img_path and os.path.exists(str(img_path)):
+                                st.image(img_path, caption=f"Defect ID: {det_id}", use_container_width=True)
+                            else:
+                                st.markdown(f"""
+                                <div style="background:#f1f5f9; border-radius:6px; padding:24px 12px; text-align:center; color:#64748b; font-size:0.75rem;">
+                                    <b>{det_id}</b><br/>Photometric Frame
+                                </div>
+                                """, unsafe_allow_html=True)
+
+                        with col_card_info:
+                            st.markdown(f"**Pothole Record: `{det_id}`**")
+                            st.caption(f"Recorded at {row.get('timestamp', 'N/A')} | Source: {row.get('source_media', 'Dashcam')}")
+                            st.markdown(f"""
+                            - **GPS Coordinates**: `{lat:.5f}, {lon:.5f}`
+                            - **Severity**: `{cat}` (Score: `{float(row.get('severity_score', 0.5)):.2f}`)
+                            - **Estimated Depth**: `{d_cm:.1f} cm` | **Volume**: `{vol_l:.1f} L`
+                            - **Current Status**: `{status}`
+                            """)
+
+                        with col_card_act:
+                            if status in ["Pending Review", "Unreported", "PORTAL_SYNC_QUEUED", "PENDING_USER_REVIEW"]:
+                                st.markdown("**Citizen Action:**")
+                                target_p = st.selectbox(
+                                    "Target Ministry:",
+                                    list(config.GOV_PORTALS.keys()),
+                                    key=f"sel_p_{det_id}",
+                                    format_func=lambda k: f"{k} ({config.GOV_PORTALS[k]['name'][:15]}...)",
+                                )
+
+                                col_sub_ap, col_sub_dis = st.columns(2)
+                                with col_sub_ap:
+                                    if st.button("✅ Approve & Submit", key=f"appr_btn_{det_id}", type="primary", use_container_width=True):
+                                        defect_dict = {
+                                            "detection_id": det_id,
+                                            "track_id": row.get("track_id", "TRK_0"),
+                                            "latitude": lat,
+                                            "longitude": lon,
+                                            "severity_category": cat,
+                                            "severity_score": float(row.get("severity_score", 0.5)),
+                                            "anomaly_score": float(row.get("anomaly_score", -0.2)),
+                                            "pixel_area": int(row.get("pixel_area", 4000)),
+                                            "image_path": img_path,
+                                            "source_media": row.get("source_media", "camera_feed"),
+                                            "timestamp": row.get("timestamp"),
+                                        }
+                                        res = dispatch_grievance_to_portal(defect_dict, portal_key=target_p)
+                                        update_grievance_status(
+                                            detection_id=det_id,
+                                            status="Dispatched",
+                                            ref_no=res["reference_number"],
+                                            portal=res["target_portal"],
+                                        )
+                                        CitizenNotifier().notify(
+                                            event_dict={**defect_dict, "reference_no": res["reference_number"], "target_portal": res["target_portal"]},
+                                            notification_type="GRIEVANCE_FILED",
+                                        )
+                                        st.success(f"Filed to {res['target_portal']} (Ref: {res['reference_number']})")
+                                        st.rerun()
+
+                                with col_sub_dis:
+                                    if st.button("❌ Disapprove", key=f"disappr_btn_{det_id}", use_container_width=True):
+                                        disapprove_defect(det_id, reason="Rejected by citizen (False positive / Not a defect)")
+                                        st.warning("Pothole Disapproved. Will not be sent to authorities.")
+                                        st.rerun()
+                            elif status.startswith("Dispatched"):
+                                st.success(f"Dispatched: {row.get('grievance_ref_no', 'N/A')}")
+                                st.caption(f"Portal: {row.get('dispatched_portal', 'CPGRAMS')}")
+                            elif status.startswith("Disapproved"):
+                                st.error("Disapproved (Flagged False Positive)")
+                                if st.button("Revert to Pending", key=f"rev_{det_id}", use_container_width=True):
+                                    update_grievance_status(det_id, status="Pending Review", ref_no="PENDING_REVIEW")
+                                    st.rerun()
+
+                        st.markdown("<hr style='margin:10px 0; border:0; border-top:1px solid #f1f5f9;'>", unsafe_allow_html=True)
+
+        elif "Official Grievance Dossier" in gov_mode or "Grievance Portal" in gov_mode:
             st.markdown("##### Government Grievance Transmission Channel")
             st.caption("Direct integration with CPGRAMS (MoRTH), NHAI (Rajmargyatra), PMGSY (Meri Sadak), and Municipal PWD divisions.")
 

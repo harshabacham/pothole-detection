@@ -42,7 +42,7 @@ import config
 from src.inference_pipeline import load_all_artifacts, run_inference_on_image
 from src.tracking import DefectTracker
 from src.severity_scoring import get_severity_color_bgr
-from src.database import init_database, insert_defect
+from src.database import init_database, insert_defect, update_grievance_status
 from src.gps_handler import load_external_gps_log, interpolate_gps
 from src.gov_portal_api import (
     reverse_geocode_location,
@@ -124,7 +124,7 @@ class VehicleDashcamAutoReporter:
         target_portal: str = "CPGRAMS",
         min_severity: str = "Medium",
         confirmation_frames: int = 2,
-        auto_dispatch: bool = True,
+        auto_dispatch: bool = False,
         sample_interval: int = 5,
         webhook_url: str = None,
         feature_mode: str = "Deep Features (ResNet-18)",
@@ -642,12 +642,26 @@ class VehicleDashcamAutoReporter:
                         )
                         ref_no = "OFFLINE_QUEUED"
                         print(f"[OFFLINE BUFFER] Cellular signal unavailable. Complaint {det_id} queued safely for auto-sync.")
+                elif dedup_decision["should_dispatch"] and not self.auto_dispatch:
+                    # User Review Policy: Record details & location, await manual approval
+                    ref_no = "PENDING_REVIEW"
+                    update_grievance_status(
+                        detection_id=det_id,
+                        status="Pending Review",
+                        ref_no=ref_no,
+                        portal=self.target_portal,
+                    )
+                    print(f"[RECORDED - REVIEW REQUIRED] Pothole {det_id} at {lat:.5f}, {lon:.5f} saved to DB. Awaiting user approval.")
                 elif not dedup_decision["should_dispatch"]:
                     # DUPLICATE SUPPRESSED — another citizen already reported this pothole
                     ref_no = dedup_decision.get("reference_no", "EXISTING_GRIEVANCE")
                     citizen_count = dedup_decision.get("citizen_count", 2)
                     escalation_tier = dedup_decision.get("escalation_tier", "FILED")
                     print(
+                        f"[DEDUP] Duplicate complaint SUPPRESSED for {det_id}. "
+                        f"Citizen #{citizen_count} corroborated existing grievance {ref_no}. "
+                        f"Escalation: {escalation_tier}"
+                    )
                         f"[DEDUP] Duplicate complaint SUPPRESSED for {det_id}. "
                         f"Citizen #{citizen_count} corroborated existing grievance {ref_no}. "
                         f"Escalation: {escalation_tier}"

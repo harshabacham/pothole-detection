@@ -1,0 +1,254 @@
+{
+  "type": "FeatureCollection",
+  "name": "Pothole_and_Road_Surface_Anomalies",
+  "crs": {
+    "type": "name",
+    "properties": {
+      "name": "urn:ogc:def:crs:OGC:1.3:CRS84"
+    }
+  },
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          77.24312,
+          28.53831
+        ]
+      },
+      "properties": {
+        "detection_id": "sample_road_test_DEFECT_TRK_0011",
+        "track_id": "DEFECT_TRK_0011",
+        "severity_category": "Medium",
+        "severity_score": 0.4492,
+        "anomaly_score": 0.4132,
+        "pixel_area": 20161,
+        "timestamp": "2026-11-01T20:02:22.509904",
+        "source_media": "sample_road_test.mp4",
+        "marker_color": "#d35400",
+        "marker_size": "medium"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          77.24222,
+          28.53711
+        ]
+      },
+      "properties": {
+        "detection_id": "sample_road_test_DEFECT_TRK_0010",
+        "track_id": "DEFECT_TRK_0010",
+        "severity_category": "Low",
+        "severity_score": 0.2084,
+        "anomaly_score": 0.4198,
+        "pixel_area": 3969,
+        "timestamp": "2026-11-01T20:02:17.857189",
+        "source_media": "sample_road_test.mp4",
+        "marker_color": "#27ae60",
+        "marker_size": "medium"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          77.24192,
+          28.53671
+        ]
+      },
+      "properties": {
+        "detection_id": "sample_road_test_DEFECT_TRK_0009",
+        "track_id": "DEFECT_TRK_0009",
+        "severity_category": "Medium",
+        "severity_score": 0.4763,
+        "anomaly_score": 0.4697,
+        "pixel_area": 16129,
+        "timestamp": "2026-11-01T20:02:16.088614",
+        "source_media": "sample_road_test.mp4",
+        "marker_color": "#d35400",
+        "marker_size": "medium"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          77.24192,
+          28.53671
+        ]
+      },
+      "properties": {
+        "detection_id": "sample_road_test_DEFECT_TRK_0008",
+        "track_id": "DEFECT_TRK_0008",
+        "severity_category": "Low",
+        "severity_score": 0.2514,
+        "anomaly_score": 0.482,
+        "pixel_area": 3969,
+        "timestamp": "2026-11-01T20:02:16.083865",
+        "source_media": "sample_road_test.mp4",
+        "marker_color": "#27ae60",
+        "marker_size": "medium"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          77.24162,
+          28.53631
+        ]
+      },
+      "properties": {
+        "detection_id": "sample_road_test_DEFECT_TRK_0007",
+        "track_id": "DEFECT_TRK_0007",
+        "severity_category": "Low",
+        "severity_score": 0.1843,
+        "anomaly_score": 0.3688,
+        "pixel_area": 3969,
+        "timestamp": "2026-11-01T20:02:14.347151",
+        "source_media": "sample_road_test.mp4",
+        "marker_color": "#27ae60",
+        "marker_size": "medium"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          77.24132,
+          28.53591
+        ]
+      },
+      "properties": {
+        "detection_id": "sample_road_test_DEFECT_TRK_0006",
+        "track_id": "DEFECT_TRK_0006",
+        "severity_category": "Low",
+        "severity_score": 0.1924,
+        "anomaly_score": 0.384,
+        "pixel_area": 3969,
+        "timestamp": "2026-11-01T20:02:12.618532",
+        "source_media": "sample_road_test.mp4",
+        "marker_color": "#27ae60",
+        "marker_size": "medium"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          77.24132,
+          28.53591
+        ]
+      },
+      "properties": {
+        "detection_id": "sample_road_test_DEFECT_TRK_0005",
+        "track_id": "DEFECT_TRK_0005",
+        "severity_category": "Low",
+        "severity_score": 0.1943,
+        "anomaly_score": 0.4054,
+        "pixel_area": 3969,
+        "timestamp": "2026-11-01T20:02:12.615016",
+        "source_media": "sample_road_test.mp4",
+        "marker_color": "#27ae60",
+        "marker_size": "medium"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          77.24132,
+          28.53591
+        ]
+      },
+      "properties": {
+        "detection_id": "sample_road_test_DEFECT_TRK_0004",
+        "track_id": "DEFECT_TRK_0004",
+        "severity_category": "Low",
+        "severity_score": 0.2083,
+        "anomaly_score": 0.4425,
+        "pixel_area": 3969,
+        "timestamp": "2026-11-01T20:02:12.611087",
+        "source_media": "sample_road_test.mp4",
+        "marker_color": "#27ae60",
+        "marker_size": "medium"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          77.24132,
+          28.53591
+        ]
+      },
+      "properties": {
+        "detection_id": "sample_road_test_DEFECT_TRK_0003",
+        "track_id": "DEFECT_TRK_0003",
+        "severity_category": "Low",
+        "severity_score": 0.3042,
+        "anomaly_score": 0.7671,
+        "pixel_area": 3969,
+        "timestamp": "2026-11-01T20:02:12.601917",
+        "source_media": "sample_road_test.mp4",
+        "marker_color": "#27ae60",
+        "marker_size": "medium"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          77.24102,
+          28.53551
+        ]
+      },
+      "properties": {
+        "detection_id": "sample_road_test_DEFECT_TRK_0002",
+        "track_id": "DEFECT_TRK_0002",
+        "severity_category": "Medium",
+        "severity_score": 0.447,
+        "anomaly_score": 0.4831,
+        "pixel_area": 76805,
+        "timestamp": "2026-11-01T20:02:10.831564",
+        "source_media": "sample_road_test.mp4",
+        "marker_color": "#d35400",
+        "marker_size": "medium"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          77.24102,
+          28.53551
+        ]
+      },
+      "properties": {
+        "detection_id": "sample_road_test_DEFECT_TRK_0001",
+        "track_id": "DEFECT_TRK_0001",
+        "severity_category": "Medium",
+        "severity_score": 0.4464,
+        "anomaly_score": 0.4845,
+        "pixel_area": 32322,
+        "timestamp": "2026-11-01T20:02:10.823850",
+        "source_media": "sample_road_test.mp4",
+        "marker_color": "#d35400",
+        "marker_size": "medium"
+      }
+    }
+  ]
+}

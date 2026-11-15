@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html>
+<head>
+    
+    <meta http-equiv="content-type" content="text/html; charset=UTF-8" />
+    <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.3/dist/leaflet.js"></script>
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Leaflet.awesome-markers/2.0.2/leaflet.awesome-markers.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.3/dist/leaflet.css"/>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.2/dist/css/bootstrap.min.css"/>
+    <link rel="stylesheet" href="https://netdna.bootstrapcdn.com/bootstrap/3.0.0/css/bootstrap-glyphicons.css"/>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.2.0/css/all.min.css"/>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/Leaflet.awesome-markers/2.0.2/leaflet.awesome-markers.css"/>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/python-visualization/folium/folium/templates/leaflet.awesome.rotate.min.css"/>
+    
+            <meta name="viewport" content="width=device-width,
+                initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+            <style>
+                #map_303caf04c665b992adbe6b468f6c7fd1 {
+                    position: relative;
+                    width: 100.0%;
+                    height: 100.0%;
+                    left: 0.0%;
+                    top: 0.0%;
+                }
+                .leaflet-container { font-size: 1rem; }
+            </style>
+
+            <style>html, body {
+                width: 100%;
+                height: 100%;
+                margin: 0;
+                padding: 0;
+            }
+            </style>
+
+            <style>#map {
+                position:absolute;
+                top:0;
+                bottom:0;
+                right:0;
+                left:0;
+                }
+            </style>
+
+            <script>
+                L_NO_TOUCH = false;
+                L_DISABLE_3D = false;
+            </script>
+
+        
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.1.0/leaflet.markercluster.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.1.0/MarkerCluster.css"/>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.1.0/MarkerCluster.Default.css"/>
+    <script src="https://cdn.jsdelivr.net/gh/python-visualization/folium@main/folium/templates/leaflet_heat.min.js"></script>
+</head>
+<body>
+    
+    
+            <div class="folium-map" id="map_303caf04c665b992adbe6b468f6c7fd1" ></div>
+        
+</body>
+<script>
+    
+    
+            var map_303caf04c665b992adbe6b468f6c7fd1 = L.map(
+                "map_303caf04c665b992adbe6b468f6c7fd1",
+                {
+                    center: [28.536346363636365, 77.24164727272728],
+                    crs: L.CRS.EPSG3857,
+                    ...{
+  "zoom": 13,
+  "zoomControl": true,
+  "preferCanvas": false,
+}
+
+                }
+            );
+
+            
+
+        
+    
+            var tile_layer_547764812945ec73a5bbea7591df2a55 = L.tileLayer(
+                "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+                {
+  "minZoom": 0,
+  "maxZoom": 19,
+  "maxNativeZoom": 19,
+  "noWrap": false,
+  "attribution": "\u0026copy; \u003ca href=\"https://www.openstreetmap.org/copyright\"\u003eOpenStreetMap\u003c/a\u003e contributors",
+  "subdomains": "abc",
+  "detectRetina": false,
+  "tms": false,
+  "opacity": 1,
+}
+
+            );
+        
+    
+            tile_layer_547764812945ec73a5bbea7591df2a55.addTo(map_303caf04c665b992adbe6b468f6c7fd1);
+        
+    
+            var marker_cluster_600c74665f329c3d9f95c5a73faa4ffa = L.markerClusterGroup(
+                {
+}
+            );
+        
+    
+            var circle_marker_fe8e6bcac5f1882720a16813c86fee15 = L.circleMarker(
+                [28.53831, 77.24312],
+                {"bubblingMouseEvents": true, "color": "orange", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "orange", "fillOpacity": 0.8, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 7, "stroke": true, "weight": 3}
+            ).addTo(marker_cluster_600c74665f329c3d9f95c5a73faa4ffa);
+        
+    
+        var popup_fd30fc09391cb32ba6223179ff282151 = L.popup({
+  "maxWidth": 250,
+});
+
+        
+            
+                var html_59066434007a0942b56f7a233dac16be = $(`<div id="html_59066434007a0942b56f7a233dac16be" style="width: 100.0%; height: 100.0%;">         <div style="font-family:sans-serif; min-width:180px;">             <h5 style="margin:0 0 5px 0; color:#2c3e50;">sample_road_test_DEFECT_TRK_0011</h5>             <b>Severity:</b> <span style="color:orange; font-weight:bold;">Medium</span> (Score: 0.45)<br>             <b>Time:</b> 2026-11-01T20:02:22.509904<br>             <b>Source:</b> sample_road_test.mp4<br>             <b>Coordinates:</b> 28.53831, 77.24312         </div>         </div>`)[0];
+                popup_fd30fc09391cb32ba6223179ff282151.setContent(html_59066434007a0942b56f7a233dac16be);
+            
+        
+
+        circle_marker_fe8e6bcac5f1882720a16813c86fee15.bindPopup(popup_fd30fc09391cb32ba6223179ff282151)
+        ;
+
+        
+    
+    
+            circle_marker_fe8e6bcac5f1882720a16813c86fee15.bindTooltip(
+                `<div>
+                     sample_road_test_DEFECT_TRK_0011 [Medium Severity]
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            var circle_marker_9dbed3fcba70f1b14c8bea3337e3f847 = L.circleMarker(
+                [28.53711, 77.24222],
+                {"bubblingMouseEvents": true, "color": "green", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "green", "fillOpacity": 0.8, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 7, "stroke": true, "weight": 3}
+            ).addTo(marker_cluster_600c74665f329c3d9f95c5a73faa4ffa);
+        
+    
+        var popup_06a1ac95187c679df255070031cffbfd = L.popup({
+  "maxWidth": 250,
+});
+
+        
+            
+                var html_2f1ee57a6dbe946359a7887c0653fd57 = $(`<div id="html_2f1ee57a6dbe946359a7887c0653fd57" style="width: 100.0%; height: 100.0%;">         <div style="font-family:sans-serif; min-width:180px;">             <h5 style="margin:0 0 5px 0; color:#2c3e50;">sample_road_test_DEFECT_TRK_0010</h5>             <b>Severity:</b> <span style="color:green; font-weight:bold;">Low</span> (Score: 0.21)<br>             <b>Time:</b> 2026-11-01T20:02:17.857189<br>             <b>Source:</b> sample_road_test.mp4<br>             <b>Coordinates:</b> 28.53711, 77.24222         </div>         </div>`)[0];
+                popup_06a1ac95187c679df255070031cffbfd.setContent(html_2f1ee57a6dbe946359a7887c0653fd57);
+            
+        
+
+        circle_marker_9dbed3fcba70f1b14c8bea3337e3f847.bindPopup(popup_06a1ac95187c679df255070031cffbfd)
+        ;
+
+        
+    
+    
+            circle_marker_9dbed3fcba70f1b14c8bea3337e3f847.bindTooltip(
+                `<div>
+                     sample_road_test_DEFECT_TRK_0010 [Low Severity]
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            var circle_marker_482e9779014db15f9d360854be507f13 = L.circleMarker(
+                [28.53671, 77.24192],
+                {"bubblingMouseEvents": true, "color": "orange", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "orange", "fillOpacity": 0.8, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 7, "stroke": true, "weight": 3}
+            ).addTo(marker_cluster_600c74665f329c3d9f95c5a73faa4ffa);
+        
+    
+        var popup_1acc97d285502723a01fd527663b65f6 = L.popup({
+  "maxWidth": 250,
+});
+
+        
+            
+                var html_69e389d36b8e65a9ec2fc593bcca1135 = $(`<div id="html_69e389d36b8e65a9ec2fc593bcca1135" style="width: 100.0%; height: 100.0%;">         <div style="font-family:sans-serif; min-width:180px;">             <h5 style="margin:0 0 5px 0; color:#2c3e50;">sample_road_test_DEFECT_TRK_0009</h5>             <b>Severity:</b> <span style="color:orange; font-weight:bold;">Medium</span> (Score: 0.48)<br>             <b>Time:</b> 2026-11-01T20:02:16.088614<br>             <b>Source:</b> sample_road_test.mp4<br>             <b>Coordinates:</b> 28.53671, 77.24192         </div>         </div>`)[0];
+                popup_1acc97d285502723a01fd527663b65f6.setContent(html_69e389d36b8e65a9ec2fc593bcca1135);
+            
+        
+
+        circle_marker_482e9779014db15f9d360854be507f13.bindPopup(popup_1acc97d285502723a01fd527663b65f6)
+        ;
+
+        
+    
+    
+            circle_marker_482e9779014db15f9d360854be507f13.bindTooltip(
+                `<div>
+                     sample_road_test_DEFECT_TRK_0009 [Medium Severity]
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            var circle_marker_72779ba4618850d60a4aff901b83f690 = L.circleMarker(
+                [28.53671, 77.24192],
+                {"bubblingMouseEvents": true, "color": "green", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "green", "fillOpacity": 0.8, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 7, "stroke": true, "weight": 3}
+            ).addTo(marker_cluster_600c74665f329c3d9f95c5a73faa4ffa);
+        
+    
+        var popup_a61a4d58e1e42ab488c28b4ef3a6ef30 = L.popup({
+  "maxWidth": 250,
+});
+
+        
+            
+                var html_a0e25dad47655e3a60b1f0d18235def9 = $(`<div id="html_a0e25dad47655e3a60b1f0d18235def9" style="width: 100.0%; height: 100.0%;">         <div style="font-family:sans-serif; min-width:180px;">             <h5 style="margin:0 0 5px 0; color:#2c3e50;">sample_road_test_DEFECT_TRK_0008</h5>             <b>Severity:</b> <span style="color:green; font-weight:bold;">Low</span> (Score: 0.25)<br>             <b>Time:</b> 2026-11-01T20:02:16.083865<br>             <b>Source:</b> sample_road_test.mp4<br>             <b>Coordinates:</b> 28.53671, 77.24192         </div>         </div>`)[0];
+                popup_a61a4d58e1e42ab488c28b4ef3a6ef30.setContent(html_a0e25dad47655e3a60b1f0d18235def9);
+            
+        
+
+        circle_marker_72779ba4618850d60a4aff901b83f690.bindPopup(popup_a61a4d58e1e42ab488c28b4ef3a6ef30)
+        ;
+
+        
+    
+    
+            circle_marker_72779ba4618850d60a4aff901b83f690.bindTooltip(
+                `<div>
+                     sample_road_test_DEFECT_TRK_0008 [Low Severity]
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            var circle_marker_41cc46fd92bcd07665da7f3f5b87e389 = L.circleMarker(
+                [28.53631, 77.24162],
+                {"bubblingMouseEvents": true, "color": "green", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "green", "fillOpacity": 0.8, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 7, "stroke": true, "weight": 3}
+            ).addTo(marker_cluster_600c74665f329c3d9f95c5a73faa4ffa);
+        
+    
+        var popup_577c40eafc002aa7a2b861d482cd0eb3 = L.popup({
+  "maxWidth": 250,
+});
+
+        
+            
+                var html_636a637b90f956798fd87fa22f175867 = $(`<div id="html_636a637b90f956798fd87fa22f175867" style="width: 100.0%; height: 100.0%;">         <div style="font-family:sans-serif; min-width:180px;">             <h5 style="margin:0 0 5px 0; color:#2c3e50;">sample_road_test_DEFECT_TRK_0007</h5>             <b>Severity:</b> <span style="color:green; font-weight:bold;">Low</span> (Score: 0.18)<br>             <b>Time:</b> 2026-11-01T20:02:14.347151<br>             <b>Source:</b> sample_road_test.mp4<br>             <b>Coordinates:</b> 28.53631, 77.24162         </div>         </div>`)[0];
+                popup_577c40eafc002aa7a2b861d482cd0eb3.setContent(html_636a637b90f956798fd87fa22f175867);
+            
+        
+
+        circle_marker_41cc46fd92bcd07665da7f3f5b87e389.bindPopup(popup_577c40eafc002aa7a2b861d482cd0eb3)
+        ;
+
+        
+    
+    
+            circle_marker_41cc46fd92bcd07665da7f3f5b87e389.bindTooltip(
+                `<div>
+                     sample_road_test_DEFECT_TRK_0007 [Low Severity]
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            var circle_marker_ffbaad2580e9fa2fb3e81d340c9b6236 = L.circleMarker(
+                [28.53591, 77.24132],
+                {"bubblingMouseEvents": true, "color": "green", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "green", "fillOpacity": 0.8, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 7, "stroke": true, "weight": 3}
+            ).addTo(marker_cluster_600c74665f329c3d9f95c5a73faa4ffa);
+        
+    
+        var popup_6920ab2489d2f95d4ee542155e109587 = L.popup({
+  "maxWidth": 250,
+});
+
+        
+            
+                var html_2b3851558af64b3a9392ede4a8d6c906 = $(`<div id="html_2b3851558af64b3a9392ede4a8d6c906" style="width: 100.0%; height: 100.0%;">         <div style="font-family:sans-serif; min-width:180px;">             <h5 style="margin:0 0 5px 0; color:#2c3e50;">sample_road_test_DEFECT_TRK_0006</h5>             <b>Severity:</b> <span style="color:green; font-weight:bold;">Low</span> (Score: 0.19)<br>             <b>Time:</b> 2026-11-01T20:02:12.618532<br>             <b>Source:</b> sample_road_test.mp4<br>             <b>Coordinates:</b> 28.53591, 77.24132         </div>         </div>`)[0];
+                popup_6920ab2489d2f95d4ee542155e109587.setContent(html_2b3851558af64b3a9392ede4a8d6c906);
+            
+        
+
+        circle_marker_ffbaad2580e9fa2fb3e81d340c9b6236.bindPopup(popup_6920ab2489d2f95d4ee542155e109587)
+        ;
+
+        
+    
+    
+            circle_marker_ffbaad2580e9fa2fb3e81d340c9b6236.bindTooltip(
+                `<div>
+                     sample_road_test_DEFECT_TRK_0006 [Low Severity]
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            var circle_marker_bf59d8ace4b2478b2aed2c2b07925661 = L.circleMarker(
+                [28.53591, 77.24132],
+                {"bubblingMouseEvents": true, "color": "green", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "green", "fillOpacity": 0.8, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 7, "stroke": true, "weight": 3}
+            ).addTo(marker_cluster_600c74665f329c3d9f95c5a73faa4ffa);
+        
+    
+        var popup_21dd1f91905bdf5e68dc56e19c153513 = L.popup({
+  "maxWidth": 250,
+});
+
+        
+            
+                var html_a833226c21433feda8937a1e5ea0561a = $(`<div id="html_a833226c21433feda8937a1e5ea0561a" style="width: 100.0%; height: 100.0%;">         <div style="font-family:sans-serif; min-width:180px;">             <h5 style="margin:0 0 5px 0; color:#2c3e50;">sample_road_test_DEFECT_TRK_0005</h5>             <b>Severity:</b> <span style="color:green; font-weight:bold;">Low</span> (Score: 0.19)<br>             <b>Time:</b> 2026-11-01T20:02:12.615016<br>             <b>Source:</b> sample_road_test.mp4<br>             <b>Coordinates:</b> 28.53591, 77.24132         </div>         </div>`)[0];
+                popup_21dd1f91905bdf5e68dc56e19c153513.setContent(html_a833226c21433feda8937a1e5ea0561a);
+            
+        
+
+        circle_marker_bf59d8ace4b2478b2aed2c2b07925661.bindPopup(popup_21dd1f91905bdf5e68dc56e19c153513)
+        ;
+
+        
+    
+    
+            circle_marker_bf59d8ace4b2478b2aed2c2b07925661.bindTooltip(
+                `<div>
+                     sample_road_test_DEFECT_TRK_0005 [Low Severity]
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            var circle_marker_6b52c28ac6292aaaa13ad93b755850c5 = L.circleMarker(
+                [28.53591, 77.24132],
+                {"bubblingMouseEvents": true, "color": "green", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "green", "fillOpacity": 0.8, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 7, "stroke": true, "weight": 3}
+            ).addTo(marker_cluster_600c74665f329c3d9f95c5a73faa4ffa);
+        
+    
+        var popup_e64f498191c92145d6cd2eea79381326 = L.popup({
+  "maxWidth": 250,
+});
+
+        
+            
+                var html_7845eb8ba74ad0f1bf45269102a6f6eb = $(`<div id="html_7845eb8ba74ad0f1bf45269102a6f6eb" style="width: 100.0%; height: 100.0%;">         <div style="font-family:sans-serif; min-width:180px;">             <h5 style="margin:0 0 5px 0; color:#2c3e50;">sample_road_test_DEFECT_TRK_0004</h5>             <b>Severity:</b> <span style="color:green; font-weight:bold;">Low</span> (Score: 0.21)<br>             <b>Time:</b> 2026-11-01T20:02:12.611087<br>             <b>Source:</b> sample_road_test.mp4<br>             <b>Coordinates:</b> 28.53591, 77.24132         </div>         </div>`)[0];
+                popup_e64f498191c92145d6cd2eea79381326.setContent(html_7845eb8ba74ad0f1bf45269102a6f6eb);
+            
+        
+
+        circle_marker_6b52c28ac6292aaaa13ad93b755850c5.bindPopup(popup_e64f498191c92145d6cd2eea79381326)
+        ;
+
+        
+    
+    
+            circle_marker_6b52c28ac6292aaaa13ad93b755850c5.bindTooltip(
+                `<div>
+                     sample_road_test_DEFECT_TRK_0004 [Low Severity]
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            var circle_marker_9fe66c8dff64a6e2ba7aa47d6751684b = L.circleMarker(
+                [28.53591, 77.24132],
+                {"bubblingMouseEvents": true, "color": "green", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "green", "fillOpacity": 0.8, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 7, "stroke": true, "weight": 3}
+            ).addTo(marker_cluster_600c74665f329c3d9f95c5a73faa4ffa);
+        
+    
+        var popup_7369434a3d81e525ee33a17ca8d12d8b = L.popup({
+  "maxWidth": 250,
+});
+
+        
+            
+                var html_2589c8acc83a04a8eedd54069c7dee68 = $(`<div id="html_2589c8acc83a04a8eedd54069c7dee68" style="width: 100.0%; height: 100.0%;">         <div style="font-family:sans-serif; min-width:180px;">             <h5 style="margin:0 0 5px 0; color:#2c3e50;">sample_road_test_DEFECT_TRK_0003</h5>             <b>Severity:</b> <span style="color:green; font-weight:bold;">Low</span> (Score: 0.30)<br>             <b>Time:</b> 2026-11-01T20:02:12.601917<br>             <b>Source:</b> sample_road_test.mp4<br>             <b>Coordinates:</b> 28.53591, 77.24132         </div>         </div>`)[0];
+                popup_7369434a3d81e525ee33a17ca8d12d8b.setContent(html_2589c8acc83a04a8eedd54069c7dee68);
+            
+        
+
+        circle_marker_9fe66c8dff64a6e2ba7aa47d6751684b.bindPopup(popup_7369434a3d81e525ee33a17ca8d12d8b)
+        ;
+
+        
+    
+    
+            circle_marker_9fe66c8dff64a6e2ba7aa47d6751684b.bindTooltip(
+                `<div>
+                     sample_road_test_DEFECT_TRK_0003 [Low Severity]
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            var circle_marker_7acfd672a3265a45f53da6be004509b3 = L.circleMarker(
+                [28.53551, 77.24102],
+                {"bubblingMouseEvents": true, "color": "orange", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "orange", "fillOpacity": 0.8, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 7, "stroke": true, "weight": 3}
+            ).addTo(marker_cluster_600c74665f329c3d9f95c5a73faa4ffa);
+        
+    
+        var popup_9c9b7a97aaddbc6706b3845c7075f47e = L.popup({
+  "maxWidth": 250,
+});
+
+        
+            
+                var html_f4323b627f291d5b0680dbe6f8519bc4 = $(`<div id="html_f4323b627f291d5b0680dbe6f8519bc4" style="width: 100.0%; height: 100.0%;">         <div style="font-family:sans-serif; min-width:180px;">             <h5 style="margin:0 0 5px 0; color:#2c3e50;">sample_road_test_DEFECT_TRK_0002</h5>             <b>Severity:</b> <span style="color:orange; font-weight:bold;">Medium</span> (Score: 0.45)<br>             <b>Time:</b> 2026-11-01T20:02:10.831564<br>             <b>Source:</b> sample_road_test.mp4<br>             <b>Coordinates:</b> 28.53551, 77.24102         </div>         </div>`)[0];
+                popup_9c9b7a97aaddbc6706b3845c7075f47e.setContent(html_f4323b627f291d5b0680dbe6f8519bc4);
+            
+        
+
+        circle_marker_7acfd672a3265a45f53da6be004509b3.bindPopup(popup_9c9b7a97aaddbc6706b3845c7075f47e)
+        ;
+
+        
+    
+    
+            circle_marker_7acfd672a3265a45f53da6be004509b3.bindTooltip(
+                `<div>
+                     sample_road_test_DEFECT_TRK_0002 [Medium Severity]
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            var circle_marker_7772804a2a0b008a3d6de0bc358a5f5c = L.circleMarker(
+                [28.53551, 77.24102],
+                {"bubblingMouseEvents": true, "color": "orange", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "orange", "fillOpacity": 0.8, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 7, "stroke": true, "weight": 3}
+            ).addTo(marker_cluster_600c74665f329c3d9f95c5a73faa4ffa);
+        
+    
+        var popup_a68ec09007355aca1bea16e200c4485b = L.popup({
+  "maxWidth": 250,
+});
+
+        
+            
+                var html_6e9b07f544bcacc69dcf7bba3a9b0874 = $(`<div id="html_6e9b07f544bcacc69dcf7bba3a9b0874" style="width: 100.0%; height: 100.0%;">         <div style="font-family:sans-serif; min-width:180px;">             <h5 style="margin:0 0 5px 0; color:#2c3e50;">sample_road_test_DEFECT_TRK_0001</h5>             <b>Severity:</b> <span style="color:orange; font-weight:bold;">Medium</span> (Score: 0.45)<br>             <b>Time:</b> 2026-11-01T20:02:10.823850<br>             <b>Source:</b> sample_road_test.mp4<br>             <b>Coordinates:</b> 28.53551, 77.24102         </div>         </div>`)[0];
+                popup_a68ec09007355aca1bea16e200c4485b.setContent(html_6e9b07f544bcacc69dcf7bba3a9b0874);
+            
+        
+
+        circle_marker_7772804a2a0b008a3d6de0bc358a5f5c.bindPopup(popup_a68ec09007355aca1bea16e200c4485b)
+        ;
+
+        
+    
+    
+            circle_marker_7772804a2a0b008a3d6de0bc358a5f5c.bindTooltip(
+                `<div>
+                     sample_road_test_DEFECT_TRK_0001 [Medium Severity]
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            marker_cluster_600c74665f329c3d9f95c5a73faa4ffa.addTo(map_303caf04c665b992adbe6b468f6c7fd1);
+        
+    
+            var heat_map_83f6263af3404c81f78195785525bee3 = L.heatLayer(
+                [[28.53831, 77.24312, 0.4492], [28.53711, 77.24222, 0.2084], [28.53671, 77.24192, 0.4763], [28.53671, 77.24192, 0.2514], [28.53631, 77.24162, 0.1843], [28.53591, 77.24132, 0.1924], [28.53591, 77.24132, 0.1943], [28.53591, 77.24132, 0.2083], [28.53591, 77.24132, 0.3042], [28.53551, 77.24102, 0.447], [28.53551, 77.24102, 0.4464]],
+                {
+  "minOpacity": 0.3,
+  "maxZoom": 16,
+  "radius": 18,
+  "blur": 12,
+}
+            );
+        
+    
+            heat_map_83f6263af3404c81f78195785525bee3.addTo(map_303caf04c665b992adbe6b468f6c7fd1);
+        
+    
+            var layer_control_4df1c291fecc0a50ff7ca35b5f6e7d72_layers = {
+                base_layers : {
+                    "openstreetmap" : tile_layer_547764812945ec73a5bbea7591df2a55,
+                },
+                overlays :  {
+                    "Defect Clusters" : marker_cluster_600c74665f329c3d9f95c5a73faa4ffa,
+                    "Severity Density Heatmap" : heat_map_83f6263af3404c81f78195785525bee3,
+                },
+            };
+            let layer_control_4df1c291fecc0a50ff7ca35b5f6e7d72 = L.control.layers(
+                layer_control_4df1c291fecc0a50ff7ca35b5f6e7d72_layers.base_layers,
+                layer_control_4df1c291fecc0a50ff7ca35b5f6e7d72_layers.overlays,
+                {
+  "position": "topright",
+  "collapsed": true,
+  "autoZIndex": true,
+}
+            ).addTo(map_303caf04c665b992adbe6b468f6c7fd1);
+
+        
+</script>
+</html>

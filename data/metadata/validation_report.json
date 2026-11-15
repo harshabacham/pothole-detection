@@ -1,0 +1,27 @@
+{
+    "total_files": 15,
+    "successfully_loaded": 14,
+    "failed_images": [
+        "C:\\Users\\harsh\\OneDrive\\Desktop\\Pathole\\data\\raw\\corrupted.jpg"
+    ],
+    "duplicate_images": [
+        [
+            "C:\\Users\\harsh\\OneDrive\\Desktop\\Pathole\\data\\raw\\road_normal_001.jpg",
+            "C:\\Users\\harsh\\OneDrive\\Desktop\\Pathole\\data\\raw\\road_normal_001_dup.jpg"
+        ]
+    ],
+    "small_images": [
+        "C:\\Users\\harsh\\OneDrive\\Desktop\\Pathole\\data\\raw\\tiny.jpg"
+    ],
+    "format_counts": {
+        ".jpg": 15
+    },
+    "dimension_stats": {
+        "min_width": 20,
+        "max_width": 640,
+        "mean_width": 595.71,
+        "min_height": 20,
+        "max_height": 480,
+        "mean_height": 447.14
+    }
+}

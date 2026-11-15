@@ -64,10 +64,10 @@ from streamlit_folium import st_folium
 
 
 # ---------------------------------------------------------------------------
-# Streamlit Page Setup & Custom Styling
+# Streamlit Page Setup & Clean Enterprise Styling
 # ---------------------------------------------------------------------------
 st.set_page_config(
-    page_title="ROADDEFECT AI — Autonomous Dashcam & Grievance Portal",
+    page_title="Pavement Defect Detection & Grievance Reporting System",
     page_icon="🛣️",
     layout="wide",
     initial_sidebar_state="expanded",
@@ -75,255 +75,199 @@ st.set_page_config(
 
 st.markdown("""
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Roboto+Mono:wght@400;500;600&display=swap');
 
-    /* Global Typography & Canvas */
+    /* Base Typography & Layout */
     html, body, [class*="css"] {
         font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     }
 
-    /* Executive Top Command Header */
-    .road-header {
-        background: linear-gradient(135deg, rgba(30, 41, 59, 0.75) 0%, rgba(15, 23, 42, 0.95) 100%);
-        border: 1px solid rgba(255, 255, 255, 0.10);
-        backdrop-filter: blur(16px);
-        border-radius: 16px;
-        padding: 18px 24px;
-        margin-bottom: 20px;
+    /* Enterprise Header */
+    .app-header {
+        border-bottom: 1px solid #e2e8f0;
+        padding-bottom: 16px;
+        margin-bottom: 22px;
         display: flex;
         justify-content: space-between;
         align-items: center;
         flex-wrap: wrap;
         gap: 12px;
-        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
     }
-    .road-brand-title {
-        font-size: 1.65rem;
-        font-weight: 800;
-        letter-spacing: -0.5px;
-        background: linear-gradient(135deg, #38bdf8 0%, #818cf8 50%, #c084fc 100%);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        display: flex;
-        align-items: center;
-        gap: 10px;
+    .app-title {
+        font-size: 1.45rem;
+        font-weight: 700;
+        color: #0f172a;
+        letter-spacing: -0.3px;
+        margin: 0;
     }
-    .road-brand-subtitle {
-        font-size: 0.86rem;
-        color: #94a3b8;
-        font-weight: 400;
+    .app-subtitle {
+        font-size: 0.85rem;
+        color: #64748b;
         margin-top: 3px;
     }
-    .header-chips {
+    .status-badge-group {
         display: flex;
         gap: 8px;
         flex-wrap: wrap;
     }
-    .chip {
+    .status-badge {
         display: inline-flex;
         align-items: center;
-        gap: 6px;
-        padding: 5px 12px;
-        border-radius: 20px;
-        font-size: 0.76rem;
-        font-weight: 600;
-        background: rgba(16, 185, 129, 0.12);
-        color: #10b981;
-        border: 1px solid rgba(16, 185, 129, 0.25);
+        padding: 4px 10px;
+        border-radius: 6px;
+        font-size: 0.74rem;
+        font-weight: 500;
+        background: #f8fafc;
+        color: #334155;
+        border: 1px solid #cbd5e1;
     }
-    .chip.cyan {
-        background: rgba(56, 189, 248, 0.12);
-        color: #38bdf8;
-        border-color: rgba(56, 189, 248, 0.25);
-    }
-    .chip.purple {
-        background: rgba(168, 85, 247, 0.12);
-        color: #c084fc;
-        border-color: rgba(168, 85, 247, 0.25);
+    .status-badge.online {
+        background: #f0fdf4;
+        color: #166534;
+        border-color: #bbf7d0;
     }
 
-    /* KPI Summary Cards */
-    .kpi-container {
+    /* Clean Metric KPI Cards (Stripe / Datadog style) */
+    .kpi-row {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
         gap: 14px;
         margin-bottom: 22px;
     }
-    .kpi-card {
-        background: linear-gradient(145deg, rgba(30, 41, 59, 0.5) 0%, rgba(15, 23, 42, 0.7) 100%);
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        border-radius: 14px;
+    .metric-box {
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
         padding: 14px 18px;
-        transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
     }
-    .kpi-card:hover {
-        border-color: rgba(56, 189, 248, 0.4);
-        transform: translateY(-2px);
-        box-shadow: 0 8px 24px rgba(56, 189, 248, 0.15);
+    .metric-title {
+        font-size: 0.72rem;
+        font-weight: 600;
+        color: #64748b;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
     }
-    .kpi-label {
+    .metric-number {
+        font-size: 1.65rem;
+        font-weight: 700;
+        color: #0f172a;
+        margin: 3px 0 1px 0;
+        font-family: 'Roboto Mono', monospace;
+    }
+    .metric-caption {
         font-size: 0.72rem;
         color: #94a3b8;
-        text-transform: uppercase;
-        font-weight: 700;
-        letter-spacing: 0.6px;
-    }
-    .kpi-value {
-        font-size: 1.85rem;
-        font-weight: 800;
-        color: #f8fafc;
-        margin: 4px 0 2px 0;
-        font-family: 'JetBrains Mono', monospace;
-        letter-spacing: -0.5px;
-    }
-    .kpi-subtext {
-        font-size: 0.74rem;
-        color: #64748b;
-        font-weight: 500;
     }
 
-    /* Incident Cards for Real-Time Dashcam Stream */
-    .incident-card {
-        background: linear-gradient(145deg, rgba(30, 41, 59, 0.75) 0%, rgba(15, 23, 42, 0.90) 100%);
-        border: 1px solid rgba(239, 68, 68, 0.35);
-        border-left: 5px solid #ef4444;
-        border-radius: 12px;
-        padding: 14px 16px;
-        margin-bottom: 14px;
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.18);
+    /* Civic Ticket / Defect Incident Cards */
+    .ticket-card {
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        padding: 14px;
+        margin-bottom: 12px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
     }
-    .incident-card.med {
-        border-color: rgba(245, 158, 11, 0.35);
-        border-left-color: #f59e0b;
+    .ticket-card.high {
+        border-left: 4px solid #dc2626;
     }
-    .incident-card.low {
-        border-color: rgba(16, 185, 129, 0.35);
-        border-left-color: #10b981;
+    .ticket-card.medium {
+        border-left: 4px solid #d97706;
     }
-    .incident-header {
+    .ticket-card.low {
+        border-left: 4px solid #16a34a;
+    }
+    .ticket-header {
         display: flex;
         justify-content: space-between;
         align-items: center;
         margin-bottom: 8px;
     }
-    .incident-badge-crit {
-        background: rgba(239, 68, 68, 0.18);
-        color: #f87171;
-        border: 1px solid rgba(239, 68, 68, 0.4);
-        padding: 3px 9px;
-        border-radius: 6px;
-        font-size: 0.76rem;
-        font-weight: 800;
-        letter-spacing: 0.4px;
-    }
-    .incident-badge-med {
-        background: rgba(245, 158, 11, 0.18);
-        color: #fbbf24;
-        border: 1px solid rgba(245, 158, 11, 0.4);
-        padding: 3px 9px;
-        border-radius: 6px;
-        font-size: 0.76rem;
-        font-weight: 800;
-        letter-spacing: 0.4px;
-    }
-    .incident-docket {
-        font-family: 'JetBrains Mono', monospace;
-        font-size: 0.78rem;
-        color: #94a3b8;
-        background: rgba(0, 0, 0, 0.3);
+    .badge-high {
+        background: #fee2e2;
+        color: #b91c1c;
+        font-size: 0.72rem;
+        font-weight: 600;
         padding: 2px 7px;
         border-radius: 4px;
     }
-    .incident-location {
-        font-size: 0.85rem;
+    .badge-medium {
+        background: #fef3c7;
+        color: #b45309;
+        font-size: 0.72rem;
         font-weight: 600;
-        color: #f1f5f9;
-        margin-bottom: 8px;
+        padding: 2px 7px;
+        border-radius: 4px;
     }
-    .telemetry-grid {
-        display: grid;
-        grid-template-columns: repeat(4, 1fr);
-        gap: 6px;
-        background: rgba(0, 0, 0, 0.28);
-        border: 1px solid rgba(255, 255, 255, 0.05);
-        padding: 8px 10px;
-        border-radius: 8px;
-        margin: 8px 0;
-        text-align: center;
-    }
-    .tel-item-label {
-        font-size: 0.65rem;
-        color: #94a3b8;
+    .badge-low {
+        background: #dcfce7;
+        color: #15803d;
+        font-size: 0.72rem;
         font-weight: 600;
-        text-transform: uppercase;
-        display: block;
+        padding: 2px 7px;
+        border-radius: 4px;
     }
-    .tel-item-val {
-        font-size: 0.85rem;
-        color: #f8fafc;
-        font-weight: 700;
-        font-family: 'JetBrains Mono', monospace;
-    }
-    .incident-action-footer {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
+    .ticket-docket {
+        font-family: 'Roboto Mono', monospace;
         font-size: 0.75rem;
-        color: #94a3b8;
-        margin-top: 6px;
+        color: #64748b;
+        font-weight: 500;
+    }
+    .ticket-title {
+        font-size: 0.88rem;
+        font-weight: 600;
+        color: #0f172a;
+        margin-bottom: 6px;
+    }
+    .telemetry-table {
+        width: 100%;
+        font-size: 0.78rem;
+        border-collapse: collapse;
+        margin: 8px 0;
+        background: #f8fafc;
+        border-radius: 6px;
+        overflow: hidden;
+    }
+    .telemetry-table td {
+        padding: 5px 8px;
+        border-bottom: 1px solid #f1f5f9;
+    }
+    .telemetry-table .label {
+        color: #64748b;
+        font-weight: 500;
+        width: 50%;
+    }
+    .telemetry-table .val {
+        color: #0f172a;
+        font-weight: 600;
+        font-family: 'Roboto Mono', monospace;
     }
 
-    /* Primary and Secondary Action Buttons */
+    /* Restrained Primary & Secondary Buttons */
     div.stButton > button[kind="primary"] {
-        background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%) !important;
+        background-color: #2563eb !important;
         color: white !important;
-        border: 1px solid #38bdf8 !important;
-        border-radius: 10px !important;
-        font-weight: 700 !important;
-        padding: 10px 20px !important;
-        letter-spacing: 0.4px !important;
-        box-shadow: 0 4px 18px rgba(2, 132, 199, 0.35) !important;
-        transition: all 0.2s ease !important;
+        border: none !important;
+        border-radius: 6px !important;
+        font-weight: 600 !important;
+        padding: 8px 16px !important;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05) !important;
     }
     div.stButton > button[kind="primary"]:hover {
-        box-shadow: 0 6px 24px rgba(56, 189, 248, 0.5) !important;
-        transform: translateY(-2px) !important;
+        background-color: #1d4ed8 !important;
     }
     div.stButton > button {
-        border-radius: 10px !important;
-        font-weight: 600 !important;
-        transition: all 0.2s ease !important;
-    }
-
-    /* Metric Cards in Image Analysis */
-    .metric-card {
-        background: linear-gradient(145deg, rgba(30, 41, 59, 0.5) 0%, rgba(15, 23, 42, 0.7) 100%);
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        border-radius: 10px;
-        padding: 10px 14px;
-        text-align: center;
-    }
-    .metric-value {
-        font-size: 1.5rem;
-        font-weight: 800;
-        font-family: 'JetBrains Mono', monospace;
-        color: #f8fafc;
-    }
-    .metric-label {
-        font-size: 0.72rem;
-        color: #94a3b8;
-        text-transform: uppercase;
-        font-weight: 700;
-        letter-spacing: 0.5px;
+        border-radius: 6px !important;
+        font-weight: 500 !important;
     }
 </style>
 """, unsafe_allow_html=True)
 
 
-@st.cache_resource(show_spinner="Loading trained unsupervised models & PyTorch backbones...")
+@st.cache_resource(show_spinner="Loading pre-fitted models...")
 def get_cached_models():
-    """Load and cache pre-fitted scaler, PCA, Isolation Forest, and PyTorch deep models."""
+    """Load and cache pre-fitted scaler, PCA, Isolation Forest, and deep feature models."""
     return load_all_artifacts()
 
 
@@ -337,107 +281,113 @@ def main():
     dedup_mgr = CrowdsourcedSpatialDeduplicator()
     dedup_summary = dedup_mgr.get_registry_summary()
 
-    # Top Executive Command Header Bar
+    # Clean Enterprise Header Bar
     st.markdown("""
-    <div class="road-header">
+    <div class="app-header">
         <div>
-            <div class="road-brand-title">🛣️ ROADDEFECT AI</div>
-            <div class="road-brand-subtitle">Autonomous Automotive Dashcam Surveillance & Government Grievance Command System</div>
+            <h1 class="app-title">Road Surface Defect Detection & Grievance Reporting System</h1>
+            <div class="app-subtitle">Automated Dashcam Pothole Surveillance, 3D Depth Profiling & Citizen Grievance Portal (IRC:82 / MoRTH Compliant)</div>
         </div>
-        <div class="header-chips">
-            <span class="chip">🟢 AI Vision: 30+ FPS</span>
-            <span class="chip cyan">🛰️ RTK GPS Synced</span>
-            <span class="chip purple">🏛️ CPGRAMS / NHAI Online</span>
+        <div class="status-badge-group">
+            <span class="status-badge online">● System Operational (28-30 FPS)</span>
+            <span class="status-badge">GPS Telemetry: Locked</span>
+            <span class="status-badge">Portals: CPGRAMS / NHAI Active</span>
         </div>
     </div>
     """, unsafe_allow_html=True)
 
-    # Executive Floating KPI Ribbon
+    # Restrained KPI Metrics Row
     st.markdown(f"""
-    <div class="kpi-container">
-        <div class="kpi-card">
-            <div class="kpi-label">Total Road Anomalies</div>
-            <div class="kpi-value">{total_records}</div>
-            <div class="kpi-subtext">Logged in SQLite Registry</div>
+    <div class="kpi-row">
+        <div class="metric-box">
+            <div class="metric-title">Recorded Road Defects</div>
+            <div class="metric-number">{total_records}</div>
+            <div class="metric-caption">Stored in local SQLite database</div>
         </div>
-        <div class="kpi-card">
-            <div class="kpi-label">High-Threat Hazards</div>
-            <div class="kpi-value" style="color:#f87171;">{high_threat_count}</div>
-            <div class="kpi-subtext">Cavity Depth ≥ 5.0 cm</div>
+        <div class="metric-box">
+            <div class="metric-title">High-Severity Hazards</div>
+            <div class="metric-number" style="color:#b91c1c;">{high_threat_count}</div>
+            <div class="metric-caption">Depth ≥ 5.0 cm (Wheel strike risk)</div>
         </div>
-        <div class="kpi-card">
-            <div class="kpi-label">Anti-Spam Duplicates Prevented</div>
-            <div class="kpi-value" style="color:#38bdf8;">{dedup_summary['duplicate_submissions_prevented']}</div>
-            <div class="kpi-subtext">Crowdsourced Corroborations</div>
+        <div class="metric-box">
+            <div class="metric-title">Duplicate Filings Suppressed</div>
+            <div class="metric-number" style="color:#0369a1;">{dedup_summary['duplicate_submissions_prevented']}</div>
+            <div class="metric-caption">Crowdsourced corroborations logged</div>
         </div>
-        <div class="kpi-card">
-            <div class="kpi-label">Citizen Petitions Filed</div>
-            <div class="kpi-value" style="color:#34d399;">{dedup_summary['total_citizen_reports']}</div>
-            <div class="kpi-subtext">MoRTH 72h SLA Enforced</div>
+        <div class="metric-box">
+            <div class="metric-title">Grievances Filed to Authorities</div>
+            <div class="metric-number" style="color:#15803d;">{dedup_summary['total_citizen_reports']}</div>
+            <div class="metric-caption">MoRTH 72-hour SLA tracking active</div>
         </div>
     </div>
     """, unsafe_allow_html=True)
 
     # -----------------------------------------------------------------------
-    # Sidebar: Mode Navigation & Pipeline Status
+    # Sidebar: Clean Navigation & Settings
     # -----------------------------------------------------------------------
-    st.sidebar.header("Navigation")
+    st.sidebar.markdown("### Navigation")
     app_mode = st.sidebar.radio(
         "Select Module:",
         [
-            "🚗 Real-Time Dashcam Auto-Reporter",
-            "📸 Image Analysis",
-            "🎥 Video Processing",
-            "🗺️ Geographic Heatmap",
-            "📋 Database Defect History",
-            "🏛️ Gov Grievance Portal (CPGRAMS / NHAI)",
-            "📈 PCI & Fleet Degradation Analytics",
-            "📑 PWD Contractor Warranty & Penalty Audit",
-            "🛠️ Municipal PWD Work Orders & Repair Resolution",
+            "Real-Time Dashcam Survey",
+            "Single Image Analysis",
+            "Video File Processing",
+            "Geographic Heatmap (GIS)",
+            "Defect Records Database",
+            "Government Grievance Portal",
+            "Pavement Condition Index (PCI)",
+            "Contractor Warranty & DLP Audit",
+            "Municipal Work Orders & SLA",
         ],
     )
 
     st.sidebar.markdown("---")
-    st.sidebar.header("System Status")
+    st.sidebar.markdown("### System Diagnostics")
     is_ready, missing_models = check_pipeline_readiness()
 
     if not is_ready:
         with st.sidebar:
-            with st.spinner("⚡ Auto-calibrating ML models on first launch..."):
+            with st.spinner("Calibrating models on first launch..."):
                 from auto_setup import ensure_models_and_data_ready
                 ensure_models_and_data_ready(verbose=False)
                 st.cache_resource.clear()
         is_ready, _ = check_pipeline_readiness()
 
     if is_ready:
-        st.sidebar.success("All ML model artifacts active")
+        st.sidebar.caption("● Model status: Ready")
     else:
-        st.sidebar.warning("Running with available feature extractors")
+        st.sidebar.caption("○ Model status: Limited")
 
     artifacts = get_cached_models()
 
     st.sidebar.markdown("---")
-    st.sidebar.subheader("Feature Engine")
+    st.sidebar.markdown("### Feature Extraction")
     feature_mode = st.sidebar.selectbox(
-        "Select Extraction Backbone:",
+        "Feature Backbone:",
         [
             "Deep Features (ResNet-18)",
             "Handcrafted (LBP+GLCM+Edge)",
+            "Fast OpenCV Texture (35+ FPS)",
         ],
-        help="Deep Features uses pretrained PyTorch ResNet-18 transfer embeddings for 100% precision on asphalt textures.",
+        help="Deep Features uses pretrained PyTorch ResNet-18. Fast OpenCV uses pure C++ texture gradients for edge hardware.",
     )
+    # Map selection to internal mode
+    internal_feature_mode = "texture_only" if "Fast OpenCV" in feature_mode else feature_mode
 
     st.sidebar.markdown("---")
-    st.sidebar.subheader("Pipeline Settings")
-    st.sidebar.write(f"**Patch Size**: {config.DEFAULT_PATCH_SIZE} × {config.DEFAULT_PATCH_SIZE} px")
-    st.sidebar.write(f"**Methodology**: Fully Unsupervised ML")
-    st.sidebar.write(f"**Contamination**: {config.IFOREST_CONTAMINATION * 100:.0f}%")
+    st.sidebar.caption(f"Patch Size: {config.DEFAULT_PATCH_SIZE}×{config.DEFAULT_PATCH_SIZE} px")
+    st.sidebar.caption(f"Contamination: {config.IFOREST_CONTAMINATION * 100:.0f}%")
+    st.sidebar.caption("Methodology: Unsupervised Isolation Forest")
 
     # =======================================================================
     # MODE 0: REAL-TIME VEHICLE DASHCAM AUTO-REPORTER
     # =======================================================================
-    if app_mode == "🚗 Real-Time Dashcam Auto-Reporter":
-        st.subheader("Car Dashcam — Autonomous Pothole Recognition & Government Reporting")
+    if "Dashcam" in app_mode:
+        st.subheader("Real-Time Vehicle Dashcam Survey & Autonomous Grievance Dispatch")
+        st.caption(
+            "Processes front windshield camera video, tracks defects across frames, computes 3D cavity depth, "
+            "and submits citizen grievance dossiers to Indian road authorities (NHAI / CPGRAMS / PMGSY)."
+        )
         st.info(
             "Designed for vehicle front windshield dashboard cameras. As you drive, the system "
             "continuously scans the road, detects potholes, tracks defects across frames to eliminate duplicates, "
@@ -467,28 +417,26 @@ def main():
         current_src_type = saved_cam_cfg.get("source_type", "usb_camera")
         current_stream_url = saved_cam_cfg.get("stream_url", "http://192.168.1.100:8080/video")
 
-        with st.expander("🎥 1-Click Dashcam Hardware Setup & Finder (Click to Test / Switch Camera)", expanded=False):
-            st.markdown(
-                "Quickly test, preview, and select your road dashcam. "
-                "If your car laptop has an internal webcam (pointing inside) and an external USB dashcam (pointing at the road), "
-                "you can select your road camera here with 1 click."
+        with st.expander("Camera Hardware Setup & Input Configuration", expanded=False):
+            st.caption(
+                "Select the video source for real-time survey. Configure connected USB cameras, wireless RTSP streams, or suspension parameters."
             )
             tab_usb, tab_phone, tab_vehicle, tab_desktop = st.tabs([
-                "🔌 USB / Windshield Dashcam",
-                "📱 Smartphone WiFi Dashcam",
-                "🚙 Vehicle Suspension Profiler",
-                "🖥️ Desktop 1-Click Launcher",
+                "USB Camera",
+                "Smartphone / RTSP Stream",
+                "Vehicle Suspension Profile",
+                "Desktop Utility",
             ])
 
             with tab_usb:
                 c_scan, c_status = st.columns([1, 2])
                 with c_scan:
-                    scan_cameras_clicked = st.button("🔍 Scan Connected Cameras", use_container_width=True)
+                    scan_cameras_clicked = st.button("Scan Connected Cameras", use_container_width=True)
                 with c_status:
                     if current_src_type == "usb_camera":
-                        st.success(f"✅ Active Default Hardware: **Camera Device {current_cam_idx}**")
+                        st.success(f"Active Device: Camera {current_cam_idx}")
                     else:
-                        st.info(f"Active Mode: **{current_src_type}**")
+                        st.info(f"Active Mode: {current_src_type}")
 
                 if scan_cameras_clicked or "scanned_cams" in st.session_state:
                     if scan_cameras_clicked:
@@ -624,7 +572,7 @@ def main():
         with col_cfg3:
             max_frames_to_run = st.slider("Drive Analysis Limit (frames):", min_value=15, max_value=150, value=60)
 
-        start_drive_btn = st.button("🚀 START AUTONOMOUS ROAD SURVEILLANCE", type="primary", use_container_width=True)
+        start_drive_btn = st.button("Start Road Survey", type="primary", use_container_width=True)
 
         if start_drive_btn:
             if active_src is None or (isinstance(active_src, str) and not active_src.startswith("http") and not os.path.exists(active_src)):
@@ -637,14 +585,14 @@ def main():
                     confirmation_frames=2,
                     auto_dispatch=auto_dispatch_toggle,
                     sample_interval=sample_rate,
-                    feature_mode=feature_mode,
+                    feature_mode=internal_feature_mode,
                 )
 
                 cap = cv2.VideoCapture(active_src)
                 if not cap.isOpened():
                     fallback_vid = os.path.join(config.VIDEOS_OUTPUT_DIR, "sample_road_test.mp4")
                     if os.path.exists(fallback_vid):
-                        st.warning(f"⚠️ Selected camera source ({active_src}) was not reachable. Automatically switching to simulation road drive ({fallback_vid}) for testing.")
+                        st.warning(f"Selected camera source ({active_src}) was not reachable. Automatically switching to simulation road drive ({fallback_vid}) for testing.")
                         active_src = fallback_vid
                         cap = cv2.VideoCapture(active_src)
 
@@ -661,15 +609,15 @@ def main():
 
                     c_video, c_events = st.columns([1.3, 1.0])
                     with c_video:
-                        st.markdown("##### 🚗 Live Windshield Dashcam HUD")
+                        st.markdown("##### Video Input & Detection Overlay")
                         video_placeholder = st.empty()
                         progress_bar = st.progress(0.0)
                         telemetry_ticker = st.empty()
 
                     with c_events:
-                        st.markdown("##### 🏛️ Government Portal Auto-Dispatch Stream")
+                        st.markdown("##### Logged Defect Incidents")
                         events_placeholder = st.container()
-                        status_caption = events_placeholder.caption("Monitoring road surface in real-time... Confirmed hazards appear here.")
+                        status_caption = events_placeholder.caption("Monitoring road surface... Confirmed defects will appear here.")
 
                     all_dispatched = []
 
@@ -712,52 +660,50 @@ def main():
                             status_caption.empty()
                             with events_placeholder:
                                 for ev in reversed(all_dispatched[-3:]):
-                                    cat_lower = ev.get('severity_category', 'Medium').lower()
-                                    card_cls = "incident-card" if cat_lower == "high" else ("incident-card med" if cat_lower == "medium" else "incident-card low")
-                                    badge_cls = "incident-badge-crit" if cat_lower == "high" else "incident-badge-med"
+                                    cat = ev.get('severity_category', 'Medium')
+                                    cat_lower = cat.lower()
+                                    card_cls = f"ticket-card {cat_lower}"
+                                    badge_cls = f"badge-{cat_lower}"
                                     d_cm = ev.get('max_depth_cm', 5.2)
                                     vol_l = ev.get('cavity_volume_liters', 3.4)
-                                    imu_g = ev.get('imu_shock_g', 1.05)
-                                    dist_m = ev.get('distance_ahead_m', 12.0)
-                                    action = ev.get('maintenance_action', 'Compact asphalt mix')
+                                    mass_kg = ev.get('asphalt_repair_mass_kg', 8.2)
+                                    wheel_hazard = ev.get('wheel_track_hazard', 'LEFT_WHEEL_PATH')
+                                    action = ev.get('maintenance_action', 'Patch repair')
 
-                                    html_card = f"""
+                                    ticket_html = f"""
                                     <div class="{card_cls}">
-                                        <div class="incident-header">
-                                            <span class="{badge_cls}">🚨 {ev.get('severity_category', 'Medium').upper()} HAZARD</span>
-                                            <span class="incident-docket">REF: {ev.get('reference_no', 'PENDING')}</span>
+                                        <div class="ticket-header">
+                                            <span class="{badge_cls}">{cat.upper()} SEVERITY</span>
+                                            <span class="ticket-docket">Ref: {ev.get('reference_no', 'PENDING')}</span>
                                         </div>
-                                        <div class="incident-location">📍 {ev.get('road_name', 'Highway')}, {ev.get('district', 'Jurisdiction')}</div>
-                                        <div class="telemetry-grid">
-                                            <div><span class="tel-item-label">DEPTH</span><span class="tel-item-val">{d_cm:.1f} cm</span></div>
-                                            <div><span class="tel-item-label">VOID</span><span class="tel-item-val">{vol_l:.1f} L</span></div>
-                                            <div><span class="tel-item-label">SHOCK</span><span class="tel-item-val">{imu_g:.2f}g</span></div>
-                                            <div><span class="tel-item-label">LEAD</span><span class="tel-item-val">{dist_m:.0f} m</span></div>
-                                        </div>
-                                        <div class="incident-action-footer">
-                                            <span>🏛️ {ev.get('target_portal', 'NHAI')}</span>
-                                            <span>🛠️ {action[:24]}</span>
-                                        </div>
+                                        <div class="ticket-title">{ev.get('road_name', 'Sector Road')}, {ev.get('district', 'Jurisdiction')}</div>
+                                        <table class="telemetry-table">
+                                            <tr><td class="label">Estimated Depth:</td><td class="val">{d_cm:.1f} cm</td></tr>
+                                            <tr><td class="label">Void Volume:</td><td class="val">{vol_l:.1f} L</td></tr>
+                                            <tr><td class="label">Asphalt Required:</td><td class="val">{mass_kg:.1f} kg</td></tr>
+                                            <tr><td class="label">Wheel Path:</td><td class="val">{wheel_hazard}</td></tr>
+                                            <tr><td class="label">Assigned Authority:</td><td class="val">{ev.get('target_portal', 'NHAI')}</td></tr>
+                                        </table>
                                     </div>
                                     """
-                                    st.markdown(html_card, unsafe_allow_html=True)
+                                    st.markdown(ticket_html, unsafe_allow_html=True)
 
                                     if ev.get("evidence_image") and os.path.exists(ev["evidence_image"]):
-                                        st.image(ev["evidence_image"], caption=f"📸 3D Metric Evidence: {ev.get('track_id', 'DEFECT')}", use_container_width=True)
+                                        st.image(ev["evidence_image"], caption=f"Photometric Evidence: {ev.get('track_id', 'DEFECT')}", use_container_width=True)
 
                                     col_act1, col_act2 = st.columns(2)
                                     with col_act1:
                                         if ev.get("whatsapp_url"):
-                                            st.link_button("📲 WhatsApp Alert", ev["whatsapp_url"], use_container_width=True)
+                                            st.link_button("Share via WhatsApp", ev["whatsapp_url"], use_container_width=True)
                                     with col_act2:
                                         if ev.get("google_maps_url"):
-                                            st.link_button("📍 Google Maps", ev["google_maps_url"], use_container_width=True)
+                                            st.link_button("View on Google Maps", ev["google_maps_url"], use_container_width=True)
 
                                     if ev.get("pdf_dossier") and os.path.exists(ev["pdf_dossier"]):
                                         with open(ev["pdf_dossier"], "rb") as f_pdf:
                                             pdf_bytes = f_pdf.read()
                                         st.download_button(
-                                            label="📄 Download Grievance PDF",
+                                            label="Download Grievance Dossier (PDF)",
                                             data=pdf_bytes,
                                             file_name=os.path.basename(ev["pdf_dossier"]),
                                             mime="application/pdf",
@@ -774,7 +720,7 @@ def main():
     # =======================================================================
     # MODE 1: IMAGE ANALYSIS
     # =======================================================================
-    elif app_mode == "📸 Image Analysis":
+    elif "Image" in app_mode:
         st.subheader("Single Image Defect Detection & Severity Analysis")
 
         input_mode = st.radio(
@@ -913,7 +859,7 @@ def main():
     # =======================================================================
     # MODE 2: VIDEO PROCESSING
     # =======================================================================
-    elif app_mode == "🎥 Video Processing":
+    elif "Video" in app_mode:
         st.subheader("Road Video Defect Analysis & Tracking")
         st.info("Reads road video streams, samples frames, tracks physical defects across time to avoid duplicates, and logs unique defects to SQLite.")
 
@@ -979,7 +925,7 @@ def main():
     # =======================================================================
     # MODE 3: GEOGRAPHIC HEATMAP & GIS
     # =======================================================================
-    elif app_mode == "🗺️ Geographic Heatmap":
+    elif "Geographic" in app_mode or "Heatmap" in app_mode:
         st.subheader("Geographic Defect Map & Spatial Heatmap")
         st.info("Interactive geospatial mapping of road defects recorded in SQLite with GPS coordinates. Includes GeoJSON export for QGIS and Google Earth.")
 
@@ -1040,7 +986,7 @@ def main():
     # =======================================================================
     # MODE 4: DATABASE HISTORY
     # =======================================================================
-    elif app_mode == "📋 Database Defect History":
+    elif "Database" in app_mode:
         st.subheader("Defect Records Database (SQLite)")
         defects_df = get_all_defects()
 
@@ -1072,7 +1018,7 @@ def main():
     # =======================================================================
     # MODE 5: INDIAN GOVERNMENT GRIEVANCE PORTAL (CPGRAMS / NHAI / PMGSY)
     # =======================================================================
-    elif app_mode == "🏛️ Gov Grievance Portal (CPGRAMS / NHAI)":
+    elif "Grievance" in app_mode or "Portal" in app_mode:
         st.subheader("Official Government Grievance & Citizen Complaint Channel")
         st.info(
             "Direct transmission interface to Government of India Public Grievance Portals: "
@@ -1291,7 +1237,7 @@ def main():
     # =======================================================================
     # MODE 6: PCI & FLEET DEGRADATION ANALYTICS
     # =======================================================================
-    elif app_mode == "📈 PCI & Fleet Degradation Analytics":
+    elif "PCI" in app_mode or "Degradation" in app_mode:
         st.subheader("Pavement Condition Index (PCI) & Multi-Drive Fleet Analytics")
         st.info(
             "Highway maintenance engineering analytics compliant with **IRC:82-2015**, **IRC:SP:16**, "
@@ -1368,7 +1314,7 @@ def main():
     # =======================================================================
     # MODE 7: PWD CONTRACTOR WARRANTY & HIGHWAY PENALTY AUDIT
     # =======================================================================
-    elif app_mode == "📑 PWD Contractor Warranty & Penalty Audit":
+    elif "Contractor" in app_mode or "Warranty" in app_mode:
         st.subheader("Highway Contractor Performance, Warranty & Legal Penalty Audit")
         st.info(
             "Enforcement interface for **Ministry of Road Transport and Highways (MoRTH)** and "
@@ -1466,9 +1412,9 @@ def main():
                     )
 
     # =======================================================================
-    # MODE 9: MUNICIPAL PWD WORK ORDERS & REPAIR RESOLUTION
+    # MODE 8: MUNICIPAL PWD WORK ORDERS & REPAIR RESOLUTION
     # =======================================================================
-    elif app_mode == "🛠️ Municipal PWD Work Orders & Repair Resolution":
+    elif "Municipal" in app_mode or "Work Orders" in app_mode:
         st.subheader("Municipal PWD Work Orders, Repair Verification & SLA Resolution")
         st.info(
             "Empowers Municipal Corporations, PWD divisions, and NHAI engineers to issue repair work orders, "

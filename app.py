@@ -1,10 +1,10 @@
 """
 app.py
 ======
-Streamlit Web Dashboard for Unsupervised Road Surface Anomaly & Pothole Detection.
-Connects Image Analysis, Video Processing, Spatio-Temporal Defect Tracking,
-SQLite Database History, Folium Geographic Heatmap, Deep PyTorch Feature Extraction,
-and GeoJSON/QGIS Export.
+Pavement Management & Road Surface Defect Detection System.
+Autonomous automotive dashcam surveillance, 3D metric cavity profiling,
+unsupervised anomaly detection, and Government of India grievance dispatch.
+Compliant with IRC:82-2015, MoRTH Section 10, and ASTM D6433 standards.
 """
 
 import os
@@ -43,7 +43,6 @@ from src.gov_portal_api import (
     build_grievance_payload,
     generate_complaint_pdf,
     dispatch_grievance_to_portal,
-    generate_complaint_reference,
 )
 from src.dashcam_agent import VehicleDashcamAutoReporter
 from src.camera_setup import (
@@ -64,10 +63,10 @@ from streamlit_folium import st_folium
 
 
 # ---------------------------------------------------------------------------
-# Streamlit Page Setup & Clean Enterprise Styling
+# Page Configuration & Clean Enterprise Stylesheet
 # ---------------------------------------------------------------------------
 st.set_page_config(
-    page_title="Pavement Defect Detection & Grievance Reporting System",
+    page_title="Pavement Management & Road Distress Survey System",
     page_icon="🛣️",
     layout="wide",
     initial_sidebar_state="expanded",
@@ -77,16 +76,15 @@ st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Roboto+Mono:wght@400;500;600&display=swap');
 
-    /* Base Typography & Layout */
     html, body, [class*="css"] {
         font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     }
 
-    /* Enterprise Header */
+    /* Enterprise Application Header */
     .app-header {
         border-bottom: 1px solid #e2e8f0;
-        padding-bottom: 16px;
-        margin-bottom: 22px;
+        padding-bottom: 14px;
+        margin-bottom: 18px;
         display: flex;
         justify-content: space-between;
         align-items: center;
@@ -94,14 +92,14 @@ st.markdown("""
         gap: 12px;
     }
     .app-title {
-        font-size: 1.45rem;
+        font-size: 1.4rem;
         font-weight: 700;
         color: #0f172a;
-        letter-spacing: -0.3px;
         margin: 0;
+        letter-spacing: -0.3px;
     }
     .app-subtitle {
-        font-size: 0.85rem;
+        font-size: 0.84rem;
         color: #64748b;
         margin-top: 3px;
     }
@@ -127,40 +125,40 @@ st.markdown("""
         border-color: #bbf7d0;
     }
 
-    /* Clean Metric KPI Cards (Stripe / Datadog style) */
+    /* KPI Summary Row */
     .kpi-row {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
-        gap: 14px;
-        margin-bottom: 22px;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 12px;
+        margin-bottom: 20px;
     }
     .metric-box {
         background: #ffffff;
         border: 1px solid #e2e8f0;
         border-radius: 8px;
-        padding: 14px 18px;
-        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+        padding: 12px 16px;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
     }
     .metric-title {
-        font-size: 0.72rem;
+        font-size: 0.70rem;
         font-weight: 600;
         color: #64748b;
         text-transform: uppercase;
         letter-spacing: 0.5px;
     }
     .metric-number {
-        font-size: 1.65rem;
+        font-size: 1.55rem;
         font-weight: 700;
         color: #0f172a;
-        margin: 3px 0 1px 0;
+        margin: 2px 0 1px 0;
         font-family: 'Roboto Mono', monospace;
     }
     .metric-caption {
-        font-size: 0.72rem;
+        font-size: 0.70rem;
         color: #94a3b8;
     }
 
-    /* Civic Ticket / Defect Incident Cards */
+    /* Municipal Ticket / Defect Cards */
     .ticket-card {
         background: #ffffff;
         border: 1px solid #e2e8f0;
@@ -210,7 +208,7 @@ st.markdown("""
     }
     .ticket-docket {
         font-family: 'Roboto Mono', monospace;
-        font-size: 0.75rem;
+        font-size: 0.74rem;
         color: #64748b;
         font-weight: 500;
     }
@@ -222,7 +220,7 @@ st.markdown("""
     }
     .telemetry-table {
         width: 100%;
-        font-size: 0.78rem;
+        font-size: 0.76rem;
         border-collapse: collapse;
         margin: 8px 0;
         background: #f8fafc;
@@ -230,7 +228,7 @@ st.markdown("""
         overflow: hidden;
     }
     .telemetry-table td {
-        padding: 5px 8px;
+        padding: 4px 8px;
         border-bottom: 1px solid #f1f5f9;
     }
     .telemetry-table .label {
@@ -244,7 +242,7 @@ st.markdown("""
         font-family: 'Roboto Mono', monospace;
     }
 
-    /* Restrained Primary & Secondary Buttons */
+    /* Buttons */
     div.stButton > button[kind="primary"] {
         background-color: #2563eb !important;
         color: white !important;
@@ -265,7 +263,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 
-@st.cache_resource(show_spinner="Loading pre-fitted models...")
+@st.cache_resource(show_spinner="Loading pre-fitted model artifacts...")
 def get_cached_models():
     """Load and cache pre-fitted scaler, PCA, Isolation Forest, and deep feature models."""
     return load_all_artifacts()
@@ -286,17 +284,17 @@ def main():
     <div class="app-header">
         <div>
             <h1 class="app-title">Road Surface Defect Detection & Grievance Reporting System</h1>
-            <div class="app-subtitle">Automated Dashcam Pothole Surveillance, 3D Depth Profiling & Citizen Grievance Portal (IRC:82 / MoRTH Compliant)</div>
+            <div class="app-subtitle">Autonomous Dashcam Pothole Surveillance, 3D Metric Depth Profiling & Citizen Grievance Portal (IRC:82 / MoRTH Compliant)</div>
         </div>
         <div class="status-badge-group">
             <span class="status-badge online">● System Operational (28-30 FPS)</span>
             <span class="status-badge">GPS Telemetry: Locked</span>
-            <span class="status-badge">Portals: CPGRAMS / NHAI Active</span>
+            <span class="status-badge">Portals: CPGRAMS / NHAI Online</span>
         </div>
     </div>
     """, unsafe_allow_html=True)
 
-    # Restrained KPI Metrics Row
+    # Restrained KPI Metrics Strip
     st.markdown(f"""
     <div class="kpi-row">
         <div class="metric-box">
@@ -323,112 +321,81 @@ def main():
     """, unsafe_allow_html=True)
 
     # -----------------------------------------------------------------------
-    # Sidebar: Clean Navigation & Settings
+    # Sidebar: Clean Configuration & Diagnostics Panel
     # -----------------------------------------------------------------------
-    st.sidebar.markdown("### Navigation")
-    app_mode = st.sidebar.radio(
-        "Select Module:",
+    st.sidebar.markdown("### System Configuration")
+    
+    # Feature backbone selection
+    feature_mode = st.sidebar.selectbox(
+        "Feature Extraction Backbone:",
         [
-            "Real-Time Dashcam Survey",
-            "Single Image Analysis",
-            "Video File Processing",
-            "Geographic Heatmap (GIS)",
-            "Defect Records Database",
-            "Government Grievance Portal",
-            "Pavement Condition Index (PCI)",
-            "Contractor Warranty & DLP Audit",
-            "Municipal Work Orders & SLA",
+            "Deep Features (ResNet-18)",
+            "Fast OpenCV Texture (35+ FPS)",
+            "Handcrafted (LBP+GLCM+Edge)",
         ],
+        help="Deep Features uses PyTorch ResNet-18 transfer embeddings. Fast OpenCV uses pure C++ texture gradients for edge real-time performance.",
     )
+    internal_feature_mode = "texture_only" if "Fast OpenCV" in feature_mode else feature_mode
 
+    # Offline queue status
+    offline_mgr = OfflineSyncManager()
+    q_summary = offline_mgr.get_queue_summary()
+    is_net_online = offline_mgr.is_online(timeout=0.25)
+    
     st.sidebar.markdown("---")
-    st.sidebar.markdown("### System Diagnostics")
-    is_ready, missing_models = check_pipeline_readiness()
+    st.sidebar.markdown("### Connectivity & Queue")
+    st.sidebar.caption(f"Network Status: {'Online' if is_net_online else 'Offline'}")
+    st.sidebar.caption(f"Buffered Offline Petitions: {q_summary['pending_count']}")
+    if not q_summary["is_clear"]:
+        if st.sidebar.button("Flush Offline Queue", use_container_width=True):
+            f_res = offline_mgr.flush_queue()
+            st.sidebar.success(f"Synced {f_res['synced_count']} petitions!")
+            st.rerun()
 
+    # Hardware verification
+    is_ready, missing_models = check_pipeline_readiness()
     if not is_ready:
         with st.sidebar:
-            with st.spinner("Calibrating models on first launch..."):
+            with st.spinner("Calibrating ML models on first launch..."):
                 from auto_setup import ensure_models_and_data_ready
                 ensure_models_and_data_ready(verbose=False)
                 st.cache_resource.clear()
         is_ready, _ = check_pipeline_readiness()
 
-    if is_ready:
-        st.sidebar.caption("● Model status: Ready")
-    else:
-        st.sidebar.caption("○ Model status: Limited")
-
-    artifacts = get_cached_models()
-
-    st.sidebar.markdown("---")
-    st.sidebar.markdown("### Feature Extraction")
-    feature_mode = st.sidebar.selectbox(
-        "Feature Backbone:",
-        [
-            "Deep Features (ResNet-18)",
-            "Handcrafted (LBP+GLCM+Edge)",
-            "Fast OpenCV Texture (35+ FPS)",
-        ],
-        help="Deep Features uses pretrained PyTorch ResNet-18. Fast OpenCV uses pure C++ texture gradients for edge hardware.",
-    )
-    # Map selection to internal mode
-    internal_feature_mode = "texture_only" if "Fast OpenCV" in feature_mode else feature_mode
-
     st.sidebar.markdown("---")
     st.sidebar.caption(f"Patch Size: {config.DEFAULT_PATCH_SIZE}×{config.DEFAULT_PATCH_SIZE} px")
     st.sidebar.caption(f"Contamination: {config.IFOREST_CONTAMINATION * 100:.0f}%")
-    st.sidebar.caption("Methodology: Unsupervised Isolation Forest")
+    st.sidebar.caption("Method: Unsupervised Isolation Forest")
+
+    artifacts = get_cached_models()
+
+    # -----------------------------------------------------------------------
+    # 4 Core Functional Workspaces (Replaces 9 Scattered Radio Options)
+    # -----------------------------------------------------------------------
+    tab_dashcam, tab_inspect, tab_gis, tab_gov = st.tabs([
+        "Live Dashcam Survey",
+        "Inspection Studio",
+        "GIS Map & Database",
+        "Municipal Governance & SLA",
+    ])
 
     # =======================================================================
-    # MODE 0: REAL-TIME VEHICLE DASHCAM AUTO-REPORTER
+    # WORKSPACE 1: LIVE DASHCAM SURVEY
     # =======================================================================
-    if "Dashcam" in app_mode:
-        st.subheader("Real-Time Vehicle Dashcam Survey & Autonomous Grievance Dispatch")
-        st.caption(
-            "Processes front windshield camera video, tracks defects across frames, computes 3D cavity depth, "
-            "and submits citizen grievance dossiers to Indian road authorities (NHAI / CPGRAMS / PMGSY)."
-        )
-        st.info(
-            "Designed for vehicle front windshield dashboard cameras. As you drive, the system "
-            "continuously scans the road, detects potholes, tracks defects across frames to eliminate duplicates, "
-            "captures high-resolution photo evidence, geolocates exact GPS coordinates, and **automatically transmits "
-            "compliant citizen grievance petitions directly to official Government of India portals** (NHAI, CPGRAMS / MoRTH, PMGSY, State PWD)."
-        )
-
-        # Offline Store-and-Forward Queue Watchdog
-        offline_mgr = OfflineSyncManager()
-        q_summary = offline_mgr.get_queue_summary()
-        is_net_online = offline_mgr.is_online(timeout=1.0)
-
-        if not q_summary["is_clear"]:
-            col_q1, col_q2 = st.columns([3, 1])
-            with col_q1:
-                st.warning(f"📡 **Offline Queue**: {q_summary['pending_count']} complaints buffered during offline highway driving. (Internet: {'🟢 Online' if is_net_online else '🔴 Offline'})")
-            with col_q2:
-                if st.button("🔄 Flush Queue to Portals", use_container_width=True):
-                    with st.spinner("Flushing offline petitions to Government Portals..."):
-                        f_res = offline_mgr.flush_queue()
-                        st.success(f"Synced {f_res['synced_count']} petitions to portals!")
-                        st.rerun()
-
-        # 1-Click Dashcam Connection & Visual Camera Selector Wizard
+    with tab_dashcam:
         saved_cam_cfg = get_saved_camera_config()
         current_cam_idx = saved_cam_cfg.get("camera_index", 0)
         current_src_type = saved_cam_cfg.get("source_type", "usb_camera")
         current_stream_url = saved_cam_cfg.get("stream_url", "http://192.168.1.100:8080/video")
 
         with st.expander("Camera Hardware Setup & Input Configuration", expanded=False):
-            st.caption(
-                "Select the video source for real-time survey. Configure connected USB cameras, wireless RTSP streams, or suspension parameters."
-            )
-            tab_usb, tab_phone, tab_vehicle, tab_desktop = st.tabs([
-                "USB Camera",
+            tab_hw_usb, tab_hw_rtsp, tab_hw_suspension = st.tabs([
+                "USB Dashcam",
                 "Smartphone / RTSP Stream",
                 "Vehicle Suspension Profile",
-                "Desktop Utility",
             ])
 
-            with tab_usb:
+            with tab_hw_usb:
                 c_scan, c_status = st.columns([1, 2])
                 with c_scan:
                     scan_cameras_clicked = st.button("Scan Connected Cameras", use_container_width=True)
@@ -445,47 +412,37 @@ def main():
 
                     detected_cams = st.session_state.get("scanned_cams", [])
                     if not detected_cams:
-                        st.warning("No physical USB cameras detected. Plug your dashcam into a USB port or use the smartphone mount option.")
+                        st.warning("No physical USB cameras detected. Plug in your dashcam or use smartphone stream.")
                     else:
-                        st.markdown(f"**Found {len(detected_cams)} camera device(s):**")
                         cam_cols = st.columns(min(len(detected_cams), 3))
                         for idx_c, cam_info in enumerate(detected_cams):
                             with cam_cols[idx_c % len(cam_cols)]:
                                 is_selected = (cam_info["index"] == current_cam_idx and current_src_type == "usb_camera")
-                                border_title = f"{'🟢 ACTIVE: ' if is_selected else ''}Camera {cam_info['index']}"
                                 with st.container(border=True):
-                                    st.markdown(f"**{border_title}**")
+                                    st.markdown(f"**Camera {cam_info['index']}**")
                                     st.caption(f"Resolution: {cam_info['width']} × {cam_info['height']}")
-                                    st.image(bgr_to_rgb(cam_info["preview_bgr"]), caption=f"Live Preview (Device {cam_info['index']})", use_container_width=True)
+                                    st.image(bgr_to_rgb(cam_info["preview_bgr"]), use_container_width=True)
                                     if st.button(
-                                        f"👉 Set Camera {cam_info['index']} as Front Dashcam",
+                                        f"Set Camera {cam_info['index']} as Road Dashcam",
                                         key=f"btn_set_cam_{cam_info['index']}",
                                         use_container_width=True,
                                         type="primary" if is_selected else "secondary",
                                     ):
                                         save_camera_config(camera_index=cam_info["index"], source_type="usb_camera")
-                                        st.success(f"Saved Camera {cam_info['index']} as default road dashcam!")
+                                        st.success(f"Saved Camera {cam_info['index']} as road dashcam.")
                                         st.rerun()
 
-            with tab_phone:
-                st.markdown(
-                    "**Mount any smartphone to your car windshield wirelessly!**\n"
-                    "1. Install the free **IP Webcam** app on Android (or **Live-Reporter** on iOS).\n"
-                    "2. Connect phone & laptop to the same car mobile hotspot or WiFi.\n"
-                    "3. Tap 'Start Server' in the app and enter the video stream URL below:"
-                )
-                p_url = st.text_input("Smartphone Stream RTSP/HTTP URL:", value=current_stream_url)
-                if st.button("💾 Save & Use Smartphone Dashcam", use_container_width=True):
+            with tab_hw_rtsp:
+                st.caption("Mount a smartphone on the windshield and stream RTSP or HTTP MJPEG:")
+                p_url = st.text_input("Stream RTSP / HTTP URL:", value=current_stream_url)
+                if st.button("Save Smartphone Stream URL", use_container_width=True):
                     save_camera_config(stream_url=p_url, source_type="phone_stream")
-                    st.success(f"Saved smartphone stream URL: {p_url}")
+                    st.success(f"Saved stream URL: {p_url}")
                     st.rerun()
 
-            with tab_vehicle:
+            with tab_hw_suspension:
                 v_prof = VehicleSuspensionProfiler()
                 curr_spec = v_prof.get_current_spec()
-                st.markdown(
-                    "**Calibrate system sensitivity and IMU shock thresholds to your vehicle's physical suspension:**"
-                )
                 col_vp1, col_vp2 = st.columns([1.5, 1])
                 with col_vp1:
                     v_keys = list(VEHICLE_PROFILES.keys())
@@ -493,97 +450,66 @@ def main():
                         "Active Vehicle Class:",
                         v_keys,
                         index=v_keys.index(curr_spec["profile_key"]) if curr_spec["profile_key"] in v_keys else 0,
-                        format_func=lambda k: f"{VEHICLE_PROFILES[k]['icon']} {VEHICLE_PROFILES[k]['display_name']}",
+                        format_func=lambda k: f"{VEHICLE_PROFILES[k]['display_name']}",
                     )
                     chosen_spec = VEHICLE_PROFILES[v_choice]
-                    st.caption(f"*{chosen_spec['vulnerability_desc']}*")
-
-                    if st.button("💾 Save Vehicle Suspension Profile", use_container_width=True):
+                    if st.button("Save Suspension Profile", use_container_width=True):
                         v_prof.save_profile(v_choice)
                         st.success(f"Saved profile: {chosen_spec['display_name']}")
                         st.rerun()
-
                 with col_vp2:
-                    st.markdown("**Suspension Architecture:**")
-                    st.write(f"- Ground Clearance: `{chosen_spec['ground_clearance_mm']} mm`")
-                    st.write(f"- Shock Threshold (Gz): `{chosen_spec['shock_threshold_g']:.2f}g`")
-                    st.write(f"- Threat Multiplier: `{chosen_spec['threat_multiplier']}x`")
-                    st.write(f"- Wheel Track Width: `{chosen_spec['wheel_track_width_m']} m`")
+                    st.caption(f"Clearance: {chosen_spec['ground_clearance_mm']} mm | G-Shock Threshold: {chosen_spec['shock_threshold_g']:.2f}g | Multiplier: {chosen_spec['threat_multiplier']}x")
 
-            with tab_desktop:
-                st.markdown(
-                    "**Need an instant full-screen hardware check before driving?**\n\n"
-                    "You can double-click **`test_my_dashcam.bat`** on your desktop or project folder anytime:\n"
-                    "- Opens an instant live test window on your car laptop.\n"
-                    "- Press `[0]`, `[1]`, `[2]` to switch cameras live.\n"
-                    "- Press `[ENTER]` to save your preferred front road dashcam.\n"
-                    "- Once saved, all dashcam batch files (`start_vehicle_dashcam.bat`) and this dashboard remember it automatically!"
-                )
-
-        col_s1, col_s2, col_s3 = st.columns([1.5, 1.2, 1.3])
-        with col_s1:
+        # Dashcam Control Toolbar
+        col_ctl1, col_ctl2, col_ctl3, col_ctl4 = st.columns([1.8, 1.4, 1.2, 1.2])
+        with col_ctl1:
             feed_options = [
-                f"🚗 Auto-Detected Dashcam (Active: {'Camera ' + str(current_cam_idx) if current_src_type == 'usb_camera' else 'Phone Stream'})",
-                "Benchmark Driving Video (sample_road_test.mp4)",
-                "Upload Dashcam Video File (MP4)",
-                "Custom Wireless RTSP / HTTP URL",
+                f"Auto-Detected Dashcam ({'Camera ' + str(current_cam_idx) if current_src_type == 'usb_camera' else 'Phone Stream'})",
+                "Benchmark Driving Footage (sample_road_test.mp4)",
+                "Custom Video File Upload",
+                "Wireless RTSP / HTTP Stream",
             ]
-            dashcam_src_mode = st.selectbox("Dashcam Input Feed:", feed_options)
-        with col_s2:
+            dashcam_src_mode = st.selectbox("Video Source:", feed_options)
+        with col_ctl2:
             portal_options = list(config.GOV_PORTALS.keys())
             target_portal_sel = st.selectbox(
-                "Target Government Authority:",
+                "Target Authority:",
                 portal_options,
-                format_func=lambda k: f"{k} - {config.GOV_PORTALS[k]['ministry_code']}",
+                format_func=lambda k: f"{k} ({config.GOV_PORTALS[k]['ministry_code']})",
             )
-        with col_s3:
-            min_sev_sel = st.selectbox(
-                "Auto-Dispatch Trigger:",
-                ["Medium", "High", "Low"],
-                help="Only potholes meeting or exceeding this severity level are dispatched to official portals.",
-            )
+        with col_ctl3:
+            min_sev_sel = st.selectbox("Dispatch Threshold:", ["Medium", "High", "Low"])
+        with col_ctl4:
+            sample_rate = st.selectbox("Sampling Stride:", [2, 5, 10], index=1, format_func=lambda s: f"1 in {s} frames")
 
         custom_video_path = None
-        if dashcam_src_mode.startswith("🚗 Auto-Detected Dashcam"):
+        if dashcam_src_mode.startswith("Auto-Detected Dashcam"):
             active_src = get_active_dashcam_source()
-            src_label = f"Auto-Configured Dashcam ({active_src})"
-        elif dashcam_src_mode == "Custom Wireless RTSP / HTTP URL":
-            stream_in = st.text_input("Enter RTSP or HTTP MJPEG URL:", value=current_stream_url)
-            active_src = stream_in
-            src_label = f"Wireless Stream ({stream_in})"
-        elif dashcam_src_mode == "Upload Dashcam Video File (MP4)":
-            up_vid = st.file_uploader("Upload Dashcam Video:", type=["mp4", "avi"])
+        elif dashcam_src_mode == "Wireless RTSP / HTTP Stream":
+            active_src = current_stream_url
+        elif dashcam_src_mode == "Custom Video File Upload":
+            up_vid = st.file_uploader("Upload MP4 / AVI Video:", type=["mp4", "avi"])
             if up_vid:
                 os.makedirs("temp", exist_ok=True)
                 custom_video_path = os.path.join("temp", up_vid.name)
                 with open(custom_video_path, "wb") as f:
                     f.write(up_vid.read())
             active_src = custom_video_path
-            src_label = os.path.basename(custom_video_path) if custom_video_path else "No Video Uploaded"
         else:
             active_src = os.path.join(config.VIDEOS_OUTPUT_DIR, "sample_road_test.mp4")
-            src_label = "sample_road_test.mp4 (Simulation Drive)"
 
-        col_cfg1, col_cfg2, col_cfg3 = st.columns(3)
-        with col_cfg1:
-            auto_dispatch_toggle = st.checkbox("Autonomous Portal Transmission", value=True, help="Automatically submit complaints to government portals without manual confirmation.")
-        with col_cfg2:
-            sample_rate = st.slider("Sampling Rate (Every N frames):", min_value=2, max_value=15, value=5)
-        with col_cfg3:
-            max_frames_to_run = st.slider("Drive Analysis Limit (frames):", min_value=15, max_value=150, value=60)
+        start_survey_btn = st.button("Start Road Survey", type="primary", use_container_width=True)
 
-        start_drive_btn = st.button("Start Road Survey", type="primary", use_container_width=True)
-
-        if start_drive_btn:
+        if start_survey_btn:
             if active_src is None or (isinstance(active_src, str) and not active_src.startswith("http") and not os.path.exists(active_src)):
-                st.error("Please provide a valid video source or connect a camera.")
+                st.error("Invalid video source or disconnected camera.")
             else:
                 reporter = VehicleDashcamAutoReporter(
                     artifacts=artifacts,
                     target_portal=target_portal_sel,
                     min_severity=min_sev_sel,
                     confirmation_frames=2,
-                    auto_dispatch=auto_dispatch_toggle,
+                    auto_dispatch=True,
                     sample_interval=sample_rate,
                     feature_mode=internal_feature_mode,
                 )
@@ -592,14 +518,13 @@ def main():
                 if not cap.isOpened():
                     fallback_vid = os.path.join(config.VIDEOS_OUTPUT_DIR, "sample_road_test.mp4")
                     if os.path.exists(fallback_vid):
-                        st.warning(f"Selected camera source ({active_src}) was not reachable. Automatically switching to simulation road drive ({fallback_vid}) for testing.")
+                        st.warning(f"Active camera unreachable. Falling back to test footage ({os.path.basename(fallback_vid)}).")
                         active_src = fallback_vid
                         cap = cv2.VideoCapture(active_src)
 
                 if not cap.isOpened():
-                    st.error(f"Could not initialize camera / video source: {active_src}")
+                    st.error(f"Could not open video stream: {active_src}")
                 else:
-                    # Optimize live dashcam buffer size to eliminate 2-3s real-time lag
                     if isinstance(active_src, int) or str(active_src).isdigit() or str(active_src).startswith("http"):
                         cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
 
@@ -642,17 +567,14 @@ def main():
                         )
 
                         video_placeholder.image(bgr_to_rgb(annotated_frame), use_container_width=True)
-                        progress_pct = min(1.0, float(sampled_num) / float(max_frames_to_run))
+                        progress_pct = min(1.0, float(sampled_num) / 60.0)
                         progress_bar.progress(progress_pct)
 
-                        v2x_tag = " | 📡 **V2X Radar**: Active" if telem.get("v2x_alerts") else ""
-                        env_tag = " | 🌧️ **Wiper Guard**: On" if telem.get("wiper_active") else (" | ☀️ **Glare Filter**" if telem.get("glare_detected") else "")
                         telemetry_ticker.caption(
-                            f"📍 **Vehicle GPS**: `{telem.get('latitude', 0.0):.5f}, {telem.get('longitude', 0.0):.5f}` | "
-                            f"**Speed**: `{telem.get('speed_kmh', 45):.0f} km/h` | "
-                            f"**IMU Shock**: `{telem.get('accel_z', 1.02):.2f}g` | "
-                            f"**Frame**: `{frame_num}` (Analyzed: `{sampled_num}`)"
-                            f"{v2x_tag}{env_tag}"
+                            f"GPS: {telem.get('latitude', 0.0):.5f}, {telem.get('longitude', 0.0):.5f} | "
+                            f"Speed: {telem.get('speed_kmh', 45):.0f} km/h | "
+                            f"Shock: {telem.get('accel_z', 1.02):.2f}g | "
+                            f"Frame: {frame_num} (Sampled: {sampled_num})"
                         )
 
                         if new_events:
@@ -668,7 +590,6 @@ def main():
                                     vol_l = ev.get('cavity_volume_liters', 3.4)
                                     mass_kg = ev.get('asphalt_repair_mass_kg', 8.2)
                                     wheel_hazard = ev.get('wheel_track_hazard', 'LEFT_WHEEL_PATH')
-                                    action = ev.get('maintenance_action', 'Patch repair')
 
                                     ticket_html = f"""
                                     <div class="{card_cls}">
@@ -711,96 +632,81 @@ def main():
                                             use_container_width=True,
                                         )
 
-                        if sampled_num >= max_frames_to_run:
+                        if sampled_num >= 60:
                             break
 
                     cap.release()
-                    st.success(f"Road surveillance complete! Processed {sampled_num} frames. Confirmed {len(all_dispatched)} potholes dispatched to official government channels.")
+                    st.success(f"Road survey complete. Evaluated {sampled_num} frames. Logged {len(all_dispatched)} confirmed defects.")
 
     # =======================================================================
-    # MODE 1: IMAGE ANALYSIS
+    # WORKSPACE 2: INSPECTION STUDIO (IMAGES & VIDEOS)
     # =======================================================================
-    elif "Image" in app_mode:
-        st.subheader("Single Image Defect Detection & Severity Analysis")
+    with tab_inspect:
+        studio_mode = st.radio("Inspection Mode:", ["Single Image Inspection", "Video File Processing"], horizontal=True)
 
-        input_mode = st.radio(
-            "Choose input source:",
-            [
-                "Upload Image File",
-                "Realistic Asphalt Benchmark",
-                "Synthetic Dataset Sample",
-                "Live Dashcam / Camera",
-            ],
-            horizontal=True,
-        )
+        if studio_mode == "Single Image Inspection":
+            col_inp1, col_inp2 = st.columns([2, 1])
+            with col_inp1:
+                input_mode = st.selectbox(
+                    "Select Input Source:",
+                    ["Upload Image File", "Realistic Asphalt Benchmark", "Synthetic Dataset Sample", "Live Dashcam Snapshot"],
+                )
 
-        image_bgr = None
-        image_name = "road_sample.jpg"
+                image_bgr = None
+                image_name = "road_sample.jpg"
 
-        if input_mode == "Upload Image File":
-            uploaded_file = st.file_uploader(
-                "Upload road surface image (JPG, JPEG, PNG)",
-                type=["jpg", "jpeg", "png"],
-            )
-            if uploaded_file is not None:
-                image_name = uploaded_file.name
-                file_bytes = np.asarray(bytearray(uploaded_file.read()), dtype=np.uint8)
-                image_bgr = cv2.imdecode(file_bytes, cv2.IMREAD_COLOR)
+                if input_mode == "Upload Image File":
+                    uploaded_file = st.file_uploader("Upload road image (JPG, PNG)", type=["jpg", "jpeg", "png"])
+                    if uploaded_file is not None:
+                        image_name = uploaded_file.name
+                        file_bytes = np.asarray(bytearray(uploaded_file.read()), dtype=np.uint8)
+                        image_bgr = cv2.imdecode(file_bytes, cv2.IMREAD_COLOR)
 
-        elif input_mode == "Realistic Asphalt Benchmark":
-            real_dir = "data/real_road_samples"
-            if os.path.exists(real_dir):
-                real_samples = [f for f in sorted(os.listdir(real_dir)) if f.lower().endswith((".jpg", ".png"))]
-                if real_samples:
-                    selected_sample = st.selectbox("Select realistic road distress sample:", real_samples)
-                    image_name = selected_sample
-                    image_bgr = cv2.imread(os.path.join(real_dir, selected_sample))
-            else:
-                st.warning("Realistic sample folder not found. Run `python scripts/fetch_real_dataset.py` to generate it.")
+                elif input_mode == "Realistic Asphalt Benchmark":
+                    real_dir = "data/real_road_samples"
+                    if os.path.exists(real_dir):
+                        real_samples = [f for f in sorted(os.listdir(real_dir)) if f.lower().endswith((".jpg", ".png"))]
+                        if real_samples:
+                            selected_sample = st.selectbox("Select Benchmark Sample:", real_samples)
+                            image_name = selected_sample
+                            image_bgr = cv2.imread(os.path.join(real_dir, selected_sample))
+                    else:
+                        st.info("Run `python scripts/fetch_real_dataset.py` to populate realistic asphalt samples.")
 
-        elif input_mode == "Synthetic Dataset Sample":
-            sample_dir = os.path.join(config.OUTPUT_DIR, "original")
-            if not os.path.exists(sample_dir):
-                sample_dir = config.INPUT_DIR
+                elif input_mode == "Synthetic Dataset Sample":
+                    sample_dir = os.path.join(config.OUTPUT_DIR, "original")
+                    if not os.path.exists(sample_dir):
+                        sample_dir = config.INPUT_DIR
+                    if os.path.exists(sample_dir):
+                        samples = [f for f in sorted(os.listdir(sample_dir)) if any(f.lower().endswith(ext) for ext in config.SUPPORTED_EXTENSIONS)]
+                        if samples:
+                            selected_sample = st.selectbox("Select Synthetic Sample:", samples)
+                            image_name = selected_sample
+                            image_bgr = cv2.imread(os.path.join(sample_dir, selected_sample))
 
-            if os.path.exists(sample_dir):
-                samples = [f for f in sorted(os.listdir(sample_dir)) if any(f.lower().endswith(ext) for ext in config.SUPPORTED_EXTENSIONS)]
-                if samples:
-                    selected_sample = st.selectbox("Select existing road image from dataset:", samples)
-                    image_name = selected_sample
-                    image_bgr = cv2.imread(os.path.join(sample_dir, selected_sample))
+                elif input_mode == "Live Dashcam Snapshot":
+                    cam_img = st.camera_input("Take Snapshot")
+                    if cam_img is not None:
+                        image_name = "dashcam_live.jpg"
+                        file_bytes = np.asarray(bytearray(cam_img.read()), dtype=np.uint8)
+                        image_bgr = cv2.imdecode(file_bytes, cv2.IMREAD_COLOR)
 
-        elif input_mode == "Live Dashcam / Camera":
-            st.info("Capture a real-time frame directly from your vehicle dashcam, webcam, or USB camera.")
-            cam_img = st.camera_input("Take Dashcam Snapshot")
-            if cam_img is not None:
-                image_name = "dashcam_live.jpg"
-                file_bytes = np.asarray(bytearray(cam_img.read()), dtype=np.uint8)
-                image_bgr = cv2.imdecode(file_bytes, cv2.IMREAD_COLOR)
+            with col_inp2:
+                if image_bgr is not None:
+                    h, w = image_bgr.shape[:2]
+                    st.image(bgr_to_rgb(image_bgr), caption=f"{image_name} ({w}×{h} px)", use_container_width=True)
+                    run_img_btn = st.button("Analyze Road Surface", type="primary", use_container_width=True)
 
-        if image_bgr is not None:
-            h, w = image_bgr.shape[:2]
-            col_p, col_i = st.columns([2, 1])
-            with col_p:
-                st.image(bgr_to_rgb(image_bgr), caption=f"{image_name} ({w}×{h} px)", use_container_width=True)
-            with col_i:
-                st.markdown("#### Input Validation")
-                st.write(f"- Resolution: {w} × {h}")
-                st.write(f"- Active Engine: `{feature_mode}`")
-                st.success("Image format and dimensions valid.")
-
-            analyze_btn = st.button("🔍 ANALYZE ROAD IMAGE", type="primary", use_container_width=True)
-
-            if analyze_btn:
-                with st.spinner(f"Analyzing road surface with {feature_mode}..."):
+            if image_bgr is not None and 'run_img_btn' in locals() and run_img_btn:
+                with st.spinner(f"Evaluating surface with {feature_mode}..."):
                     results = run_inference_on_image(
                         image_bgr,
                         artifacts,
                         image_name=image_name,
-                        feature_mode=feature_mode,
+                        feature_mode=internal_feature_mode,
                     )
 
-                # Save detections to database
+                # Persist to SQLite
                 for _, r in results["candidates_df"].iterrows():
                     insert_defect(
                         detection_id=f"{image_name}_{r['candidate_id']}",
@@ -815,107 +721,85 @@ def main():
                         source_media=image_name,
                     )
 
-                st.success(f"Analysis complete using {results['feature_mode_used']}!")
+                st.success(f"Analysis Complete. Detected {results['candidate_count']} candidate defects.")
 
-                # Summary metrics
                 m1, m2, m3, m4, m5, m6 = st.columns(6)
-                with m1:
-                    st.markdown(f'<div class="metric-card"><div class="metric-value">{results["total_patches"]}</div><div class="metric-label">Patches</div></div>', unsafe_allow_html=True)
-                with m2:
-                    st.markdown(f'<div class="metric-card"><div class="metric-value" style="color:#c0392b;">{results["anomalous_patches"]}</div><div class="metric-label">Anomalies</div></div>', unsafe_allow_html=True)
-                with m3:
-                    st.markdown(f'<div class="metric-card"><div class="metric-value" style="color:#2980b9;">{results["candidate_count"]}</div><div class="metric-label">Candidates</div></div>', unsafe_allow_html=True)
-                with m4:
-                    st.markdown(f'<div class="metric-card"><div class="metric-value" style="color:#27ae60;">{results["low_severity_count"]}</div><div class="metric-label">Low</div></div>', unsafe_allow_html=True)
-                with m5:
-                    st.markdown(f'<div class="metric-card"><div class="metric-value" style="color:#d35400;">{results["medium_severity_count"]}</div><div class="metric-label">Medium</div></div>', unsafe_allow_html=True)
-                with m6:
-                    st.markdown(f'<div class="metric-card"><div class="metric-value" style="color:#c0392b;">{results["high_severity_count"]}</div><div class="metric-label">High</div></div>', unsafe_allow_html=True)
+                m1.metric("Total Patches", results["total_patches"])
+                m2.metric("Anomalies", results["anomalous_patches"])
+                m3.metric("Defect Candidates", results["candidate_count"])
+                m4.metric("Low Severity", results["low_severity_count"])
+                m5.metric("Medium Severity", results["medium_severity_count"])
+                m6.metric("High Severity", results["high_severity_count"])
 
-                st.markdown("---")
-                t1, t2, t3, t4 = st.tabs(["Severity Bounding Boxes", "Spatial Heatmap", "Anomaly Patch Overlay", "Preprocessed CLAHE"])
-                with t1:
+                tab_t1, tab_t2, tab_t3, tab_t4 = st.tabs([
+                    "Severity Bounding Boxes",
+                    "Spatial Density Heatmap",
+                    "Anomaly Patch Overlay",
+                    "CLAHE Preprocessed",
+                ])
+                with tab_t1:
                     st.image(bgr_to_rgb(results["severity_bgr"]), use_container_width=True)
-                with t2:
+                with tab_t2:
                     st.image(bgr_to_rgb(results["heatmap_bgr"]), use_container_width=True)
-                with t3:
+                with tab_t3:
                     st.image(bgr_to_rgb(results["overlay_bgr"]), use_container_width=True)
-                with t4:
+                with tab_t4:
                     st.image(bgr_to_rgb(results["processed_bgr"]), use_container_width=True)
 
-                # Candidate table & export
-                st.subheader("Candidate Detections")
                 cand_df = results["candidates_df"]
                 if not cand_df.empty:
                     st.dataframe(cand_df, use_container_width=True)
-                    c1, c2 = st.columns(2)
-                    with c1:
-                        st.download_button("📥 Download Annotated Image", bgr_to_png_bytes(results["severity_bgr"]), f"{image_name}_annotated.png", "image/png", use_container_width=True)
-                    with c2:
-                        st.download_button("📥 Download CSV Report", dataframe_to_csv_bytes(cand_df), f"{image_name}_report.csv", "text/csv", use_container_width=True)
+                    c_dl1, c_dl2 = st.columns(2)
+                    with c_dl1:
+                        st.download_button("Download Annotated Image (PNG)", bgr_to_png_bytes(results["severity_bgr"]), f"{image_name}_annotated.png", "image/png", use_container_width=True)
+                    with c_dl2:
+                        st.download_button("Download Defect Metrics (CSV)", dataframe_to_csv_bytes(cand_df), f"{image_name}_metrics.csv", "text/csv", use_container_width=True)
 
-                    st.info("🏛️ **Citizen Grievance Action**: You can immediately report these logged anomalies to official Indian authorities (MoRTH / CPGRAMS, NHAI) under **'🏛️ Gov Grievance Portal'** in the sidebar.")
+        else:
+            # Video File Processing
+            col_v1, col_v2 = st.columns(2)
+            with col_v1:
+                video_file = st.file_uploader("Upload Road Survey Video (MP4, AVI)", type=["mp4", "avi"])
+                gps_csv_file = st.file_uploader("Optional GPS Log (timestamp_sec, lat, lon)", type=["csv"])
+                sample_video_path = os.path.join(config.VIDEOS_OUTPUT_DIR, "sample_road_test.mp4")
+                use_sample = False
+                if not video_file and os.path.exists(sample_video_path):
+                    use_sample = st.checkbox("Or use benchmark test video (sample_road_test.mp4)", value=True)
 
-    # =======================================================================
-    # MODE 2: VIDEO PROCESSING
-    # =======================================================================
-    elif "Video" in app_mode:
-        st.subheader("Road Video Defect Analysis & Tracking")
-        st.info("Reads road video streams, samples frames, tracks physical defects across time to avoid duplicates, and logs unique defects to SQLite.")
+            with col_v2:
+                v_stride = st.slider("Sampling Stride (frames):", min_value=5, max_value=30, value=10)
+                run_vid_btn = st.button("Process Video Stream", type="primary", use_container_width=True)
 
-        video_file = st.file_uploader("Upload Road Video (MP4, AVI)", type=["mp4", "avi"])
-        gps_csv_file = st.file_uploader("Optional: Upload GPS Log CSV (timestamp_sec, latitude, longitude)", type=["csv"])
-
-        sample_video_path = os.path.join(config.VIDEOS_OUTPUT_DIR, "sample_road_test.mp4")
-        use_sample = False
-        if not video_file and os.path.exists(sample_video_path):
-            if st.checkbox("Or use benchmark test video (sample_road_test.mp4)"):
-                use_sample = True
-
-        if video_file is not None or use_sample:
+            target_video = None
             if video_file:
                 os.makedirs("temp", exist_ok=True)
-                temp_vid_path = os.path.join("temp", video_file.name)
-                with open(temp_vid_path, "wb") as f:
+                target_video = os.path.join("temp", video_file.name)
+                with open(target_video, "wb") as f:
                     f.write(video_file.read())
-                target_video = temp_vid_path
-            else:
+            elif use_sample:
                 target_video = sample_video_path
 
             temp_gps_path = None
             if gps_csv_file:
-                temp_gps_path = os.path.join("temp", "telemetry.csv")
+                temp_gps_path = os.path.join("temp", gps_csv_file.name)
                 with open(temp_gps_path, "wb") as f:
                     f.write(gps_csv_file.read())
 
-            col_v1, col_v2 = st.columns(2)
-            with col_v1:
-                sample_rate = st.slider("Sampling Interval (every N frames):", min_value=5, max_value=30, value=10)
-            with col_v2:
-                st.write(f"Target Video: `{os.path.basename(target_video)}`")
-
-            run_vid_btn = st.button("🚀 PROCESS VIDEO", type="primary", use_container_width=True)
-
-            if run_vid_btn:
-                with st.spinner("Processing video frames and tracking defects across time..."):
+            if run_vid_btn and target_video:
+                with st.spinner("Processing video frames and tracking spatial defects..."):
                     vid_res = process_road_video(
                         video_path=target_video,
                         gps_log_path=temp_gps_path,
-                        sample_interval=sample_rate,
+                        sample_interval=v_stride,
                         artifacts=artifacts,
                     )
 
-                st.success("Video processing complete!")
+                st.success("Video processing complete.")
+                vm1, vm2, vm3 = st.columns(3)
+                vm1.metric("Sampled Frames", vid_res["total_frames_sampled"])
+                vm2.metric("Unique Tracked Defects", vid_res["unique_defects_tracked"])
+                vm3.metric("Database Entries Logged", vid_res["total_detections_logged"])
 
-                col_m1, col_m2, col_m3 = st.columns(3)
-                with col_m1:
-                    st.markdown(f'<div class="metric-card"><div class="metric-value">{vid_res["total_frames_sampled"]}</div><div class="metric-label">Sampled Frames</div></div>', unsafe_allow_html=True)
-                with col_m2:
-                    st.markdown(f'<div class="metric-card"><div class="metric-value" style="color:#2980b9;">{vid_res["unique_defects_tracked"]}</div><div class="metric-label">Unique Physical Defects</div></div>', unsafe_allow_html=True)
-                with col_m3:
-                    st.markdown(f'<div class="metric-card"><div class="metric-value" style="color:#27ae60;">{vid_res["total_detections_logged"]}</div><div class="metric-label">Logged to Database</div></div>', unsafe_allow_html=True)
-
-                st.markdown("#### Tracked Defect Entities")
                 if vid_res["tracks"]:
                     st.dataframe(pd.DataFrame(vid_res["tracks"]), use_container_width=True)
 
@@ -923,165 +807,92 @@ def main():
                     st.video(vid_res["output_video_path"])
 
     # =======================================================================
-    # MODE 3: GEOGRAPHIC HEATMAP & GIS
+    # WORKSPACE 3: GIS MAP & DATABASE REGISTRY
     # =======================================================================
-    elif "Geographic" in app_mode or "Heatmap" in app_mode:
-        st.subheader("Geographic Defect Map & Spatial Heatmap")
-        st.info("Interactive geospatial mapping of road defects recorded in SQLite with GPS coordinates. Includes GeoJSON export for QGIS and Google Earth.")
-
+    with tab_gis:
         defects_df = get_all_defects()
         geotagged_df = defects_df.dropna(subset=["latitude", "longitude"]) if not defects_df.empty else pd.DataFrame()
 
-        st.write(f"**Total Database Records**: {len(defects_df)} | **Geotagged Defects**: {len(geotagged_df)}")
-
-        col_f1, col_f2 = st.columns([1, 3])
-        with col_f1:
-            st.markdown("##### Filter Severity")
+        col_gm1, col_gm2, col_gm3, col_gm4 = st.columns([1, 1, 1, 3])
+        with col_gm1:
             show_low = st.checkbox("Low Severity", value=True)
+        with col_gm2:
             show_med = st.checkbox("Medium Severity", value=True)
+        with col_gm3:
             show_high = st.checkbox("High Severity", value=True)
 
-            active_filters = []
-            if show_low: active_filters.append("Low")
-            if show_med: active_filters.append("Medium")
-            if show_high: active_filters.append("High")
+        active_filters = []
+        if show_low: active_filters.append("Low")
+        if show_med: active_filters.append("Medium")
+        if show_high: active_filters.append("High")
 
-            st.markdown("---")
-            st.markdown("##### GIS & Smart City Export")
+        with col_gm4:
+            st.caption(f"Database Records: {len(defects_df)} | Geotagged Coordinates: {len(geotagged_df)}")
+
+        col_map, col_gis_tools = st.columns([3, 1])
+        with col_map:
+            folium_map = build_geographic_map(defects_df, severity_filter=active_filters)
+            st_folium(folium_map, width=950, height=480)
+
+        with col_gis_tools:
+            st.markdown("##### GIS & Engineering Exports")
             if not geotagged_df.empty:
                 g_bytes = geojson_to_bytes(geotagged_df)
-                st.download_button(
-                    "🗺️ Download GeoJSON (for QGIS)",
-                    g_bytes,
-                    "pothole_survey.geojson",
-                    "application/geo+json",
-                    use_container_width=True,
-                )
+                st.download_button("Export GeoJSON (QGIS)", g_bytes, "pothole_survey.geojson", "application/geo+json", use_container_width=True)
 
-                kml_bytes_data = kml_to_bytes(geotagged_df, extrude_3d=True)
-                st.download_button(
-                    "🌍 Download 3D Google Earth (KML)",
-                    kml_bytes_data,
-                    "potholes_3d_google_earth.kml",
-                    "application/vnd.google-earth.kml+xml",
-                    use_container_width=True,
-                )
+                kml_data = kml_to_bytes(geotagged_df, extrude_3d=True)
+                st.download_button("Export 3D KML (Google Earth)", kml_data, "potholes_3d.kml", "application/vnd.google-earth.kml+xml", use_container_width=True)
 
-                import json as _py_json
+                import json as _json
                 smart_feed = export_smart_city_wms_feed(geotagged_df)
-                st.download_button(
-                    "🏙️ Smart City ICCC API Feed (JSON)",
-                    _py_json.dumps(smart_feed, indent=2).encode("utf-8"),
-                    "smart_city_pothole_feed.json",
-                    "application/json",
-                    use_container_width=True,
-                )
+                st.download_button("Export Smart City API Feed (JSON)", _json.dumps(smart_feed, indent=2).encode("utf-8"), "smart_city_potholes.json", "application/json", use_container_width=True)
             else:
-                st.caption("No GPS points to export yet.")
-
-        with col_f2:
-            folium_map = build_geographic_map(defects_df, severity_filter=active_filters)
-            st_folium(folium_map, width=900, height=520)
-
-    # =======================================================================
-    # MODE 4: DATABASE HISTORY
-    # =======================================================================
-    elif "Database" in app_mode:
-        st.subheader("Defect Records Database (SQLite)")
-        defects_df = get_all_defects()
-
-        if not defects_df.empty:
-            st.dataframe(defects_df, use_container_width=True)
-
-            col_d1, col_d2 = st.columns(2)
-            with col_d1:
-                d_csv = dataframe_to_csv_bytes(defects_df)
-                st.download_button(
-                    "📥 Export Full Database to CSV",
-                    d_csv,
-                    "pothole_defect_database.csv",
-                    "text/csv",
-                    use_container_width=True,
-                )
-            with col_d2:
-                g_bytes = geojson_to_bytes(defects_df)
-                st.download_button(
-                    "🗺️ Export to GeoJSON (for QGIS / ArcGIS)",
-                    g_bytes,
-                    "pothole_survey.geojson",
-                    "application/geo+json",
-                    use_container_width=True,
-                )
-        else:
-            st.info("Database is currently empty. Run Image Analysis or Video Processing to log defect reports.")
-
-    # =======================================================================
-    # MODE 5: INDIAN GOVERNMENT GRIEVANCE PORTAL (CPGRAMS / NHAI / PMGSY)
-    # =======================================================================
-    elif "Grievance" in app_mode or "Portal" in app_mode:
-        st.subheader("Official Government Grievance & Citizen Complaint Channel")
-        st.info(
-            "Direct transmission interface to Government of India Public Grievance Portals: "
-            "**CPGRAMS (MoRTH)**, **NHAI (Rajmargyatra)**, **PMGSY (Meri Sadak)**, and **State Municipal Corporations (PWD)**. "
-            "Converts detected road anomalies and visual evidence into compliant electronic grievance petitions "
-            "with GPS reverse-geocoding, severity audits, and official printable PDF dossiers."
-        )
-
-        defects_df = get_all_defects()
-
-        # Overview Metrics & Crowdsourced Deduplication Summary
-        total_defects = len(defects_df)
-        dispatched_count = 0
-        unreported_count = 0
-        if not defects_df.empty and "grievance_status" in defects_df.columns:
-            dispatched_count = int((defects_df["grievance_status"] == "Dispatched to Portal").sum())
-            unreported_count = total_defects - dispatched_count
-
-        dedup_mgr = CrowdsourcedSpatialDeduplicator()
-        dedup_stats = dedup_mgr.get_registry_summary()
-
-        g_m1, g_m2, g_m3, g_m4 = st.columns(4)
-        with g_m1:
-            st.markdown(f'<div class="metric-card"><div class="metric-value">{total_defects}</div><div class="metric-label">Logged Defects</div></div>', unsafe_allow_html=True)
-        with g_m2:
-            st.markdown(f'<div class="metric-card"><div class="metric-value" style="color:#27ae60;">{dispatched_count}</div><div class="metric-label">Unique Grievances</div></div>', unsafe_allow_html=True)
-        with g_m3:
-            st.markdown(f'<div class="metric-card"><div class="metric-value" style="color:#2980b9;">{dedup_stats["duplicate_submissions_prevented"]}</div><div class="metric-label">Duplicates Prevented</div></div>', unsafe_allow_html=True)
-        with g_m4:
-            st.markdown(f'<div class="metric-card"><div class="metric-value" style="color:#8e44ad;">{dedup_stats["total_citizen_reports"]}</div><div class="metric-label">Citizen Corroborations</div></div>', unsafe_allow_html=True)
-
-        st.info(
-            "🛡️ **Crowdsourced Anti-Spam Gate Active**: When multiple vehicles pass the same pothole (within 15m), "
-            "duplicate grievances to official portals are automatically suppressed. Instead, each new vehicle sighting "
-            "adds an independent citizen corroboration, escalating priority from `COMMUNITY_ALERT` (5+) to `HIGH_PRIORITY` (15+) "
-            "to `CRITICAL_MASS` (50+) without creating duplicate burden for municipal authorities."
-        )
+                st.caption("No GPS points recorded yet.")
 
         st.markdown("---")
+        st.markdown("##### Database Defect Records (SQLite)")
+        if not defects_df.empty:
+            st.dataframe(defects_df, use_container_width=True)
+            d_csv = dataframe_to_csv_bytes(defects_df)
+            st.download_button("Export Database Table (CSV)", d_csv, "pothole_records.csv", "text/csv", use_container_width=True)
+        else:
+            st.caption("Database is currently empty. Run a survey or inspect images to log records.")
 
-        # Source Selection: Pick from database or enter custom
-        source_mode = st.radio(
-            "Select Defect Record Source:",
-            ["Select Recorded Defect from SQLite Database", "Enter Custom Coordinates / Road Distress"],
+    # =======================================================================
+    # WORKSPACE 4: MUNICIPAL GOVERNANCE & SLA
+    # =======================================================================
+    with tab_gov:
+        gov_mode = st.radio(
+            "Governance Module:",
+            [
+                "Grievance Portal (CPGRAMS / NHAI)",
+                "Municipal Work Orders & 72h SLA",
+                "Contractor Warranty & DLP Audit",
+                "Pavement Condition Index (PCI)",
+            ],
             horizontal=True,
         )
 
-        selected_defect = None
+        defects_df = get_all_defects()
 
-        if source_mode == "Select Recorded Defect from SQLite Database":
+        if "Grievance" in gov_mode:
+            st.markdown("##### Government Grievance Transmission Channel")
+            st.caption("Direct integration with CPGRAMS (MoRTH), NHAI (Rajmargyatra), PMGSY (Meri Sadak), and Municipal PWD divisions.")
+
             if defects_df.empty:
-                st.warning("No defect records found in SQLite. Run Image Analysis or Video Processing, or choose 'Enter Custom Coordinates'.")
+                st.info("No defect records found in SQLite. Record defects in Live Dashcam or Inspection Studio first.")
             else:
-                defect_labels = []
+                defect_options = []
                 for _, r in defects_df.iterrows():
                     stat = r.get("grievance_status") or "Unreported"
                     lat_str = f"{r['latitude']:.4f}" if pd.notnull(r.get("latitude")) else "No GPS"
                     lon_str = f"{r['longitude']:.4f}" if pd.notnull(r.get("longitude")) else ""
-                    gps_label = f"({lat_str}, {lon_str})" if lon_str else f"({lat_str})"
-                    defect_labels.append(f"[{r['id']}] {r['detection_id']} | Sev: {r['severity_category']} ({r['severity_score']:.2f}) | {gps_label} | Status: {stat}")
+                    gps_lbl = f"({lat_str}, {lon_str})" if lon_str else f"({lat_str})"
+                    defect_options.append(f"[{r['id']}] {r['detection_id']} | Sev: {r['severity_category']} | {gps_lbl} | Status: {stat}")
 
-                selected_idx = st.selectbox("Choose Road Defect to Inspect & Dispatch:", range(len(defect_labels)), format_func=lambda i: defect_labels[i])
-                row = defects_df.iloc[selected_idx]
+                sel_idx = st.selectbox("Select Defect Record to File:", range(len(defect_options)), format_func=lambda i: defect_options[i])
+                row = defects_df.iloc[sel_idx]
+
                 selected_defect = {
                     "detection_id": row["detection_id"],
                     "track_id": row.get("track_id", "TRK_0"),
@@ -1097,516 +908,113 @@ def main():
                     "current_status": row.get("grievance_status", "Unreported"),
                     "current_ref_no": row.get("grievance_ref_no"),
                 }
-        else:
-            col_c1, col_c2, col_c3 = st.columns(3)
-            with col_c1:
-                custom_lat = st.number_input("Latitude (India)", value=28.53831, format="%.5f")
-            with col_c2:
-                custom_lon = st.number_input("Longitude (India)", value=77.24312, format="%.5f")
-            with col_c3:
-                custom_sev = st.selectbox("Severity Level", ["High", "Medium", "Low"])
 
-            selected_defect = {
-                "detection_id": f"MANUAL_ENTRY_{int(custom_lat*1000)}_{int(custom_lon*1000)}",
-                "track_id": "TRK_MANUAL",
-                "latitude": custom_lat,
-                "longitude": custom_lon,
-                "severity_category": custom_sev,
-                "severity_score": 0.85 if custom_sev == "High" else (0.55 if custom_sev == "Medium" else 0.25),
-                "anomaly_score": -0.32,
-                "pixel_area": 9500 if custom_sev == "High" else 3500,
-                "image_path": os.path.join(config.REAL_ROAD_SAMPLES_DIR, "real_pothole_1.jpg") if os.path.exists(os.path.join(config.REAL_ROAD_SAMPLES_DIR, "real_pothole_1.jpg")) else None,
-                "source_media": "Manual Survey",
-                "timestamp": pd.Timestamp.now().isoformat(),
-                "current_status": "Unreported",
-                "current_ref_no": None,
-            }
+                col_gv1, col_gv2 = st.columns(2)
+                with col_gv1:
+                    portal_keys = list(config.GOV_PORTALS.keys())
+                    chosen_portal_key = st.selectbox("Select Authority:", portal_keys, format_func=lambda k: f"{k}: {config.GOV_PORTALS[k]['name']}")
+                    geo_info = reverse_geocode_location(selected_defect["latitude"], selected_defect["longitude"])
+                    st.caption(f"Jurisdiction: {geo_info['formatted_address']}")
 
-        if selected_defect:
-            st.markdown("### 1. Reverse-Geocoded Road Location")
-            with st.spinner("Resolving OpenStreetMap address for road jurisdiction..."):
-                geo_info = reverse_geocode_location(selected_defect["latitude"], selected_defect["longitude"])
+                with col_gv2:
+                    payload = build_grievance_payload(selected_defect, portal_key=chosen_portal_key)
+                    pdf_path = generate_complaint_pdf(payload, defect_image_path=selected_defect.get("image_path"))
+                    col_b1, col_b2 = st.columns(2)
+                    with col_b1:
+                        if st.button("Dispatch Grievance Petition", type="primary", use_container_width=True):
+                            res = dispatch_grievance_to_portal(selected_defect, portal_key=chosen_portal_key)
+                            c_notif = CitizenNotifier()
+                            c_notif.notify(
+                                event_dict={**selected_defect, "reference_no": res["reference_number"], "target_portal": res["target_portal"]},
+                                notification_type="GRIEVANCE_FILED",
+                            )
+                            st.success(f"Filed to {res['target_portal']} (Ref: {res['reference_number']}).")
+                    with col_b2:
+                        if os.path.exists(pdf_path):
+                            with open(pdf_path, "rb") as f_pdf:
+                                st.download_button("Download Official PDF Dossier", f_pdf.read(), os.path.basename(pdf_path), "application/pdf", use_container_width=True)
 
-            col_g1, col_g2 = st.columns([2, 1])
-            with col_g1:
-                st.markdown(f"**Full Postal Address**: {geo_info['formatted_address']}")
-                st.markdown(f"- **Road/Sector**: `{geo_info['road']}`")
-                st.markdown(f"- **District**: `{geo_info['district']}`")
-                st.markdown(f"- **State**: `{geo_info['state']}`")
-                st.markdown(f"- **PIN Code**: `{geo_info['postcode'] or 'N/A'}`")
-            with col_g2:
-                st.markdown(f"**GPS Coordinates**")
-                st.code(f"Lat: {selected_defect['latitude']}\nLon: {selected_defect['longitude']}")
-                if selected_defect.get("current_status") == "Dispatched to Portal":
-                    st.success(f"Status: {selected_defect.get('current_status')}\nRef: {selected_defect.get('current_ref_no')}")
+        elif "Work Orders" in gov_mode:
+            st.markdown("##### Municipal PWD Work Orders & Statutory 72-Hour SLA Resolution")
+            st.caption("Enforces Section 10 MoRTH 72-hour repair compliance, generates Schedule of Rates (SoR) BOQ, and certifies repair closures.")
+
+            wo_mgr = MunicipalWorkOrderManager()
+            wo_list = wo_mgr.get_all_work_orders()
+            wo_df = wo_mgr.get_all_work_orders_df()
+
+            col_w1, col_w2 = st.columns([2, 1])
+            with col_w1:
+                if not wo_df.empty:
+                    st.dataframe(wo_df, use_container_width=True)
                 else:
-                    st.warning(f"Status: {selected_defect.get('current_status', 'Unreported')}")
+                    st.caption("No work orders issued yet.")
+            with col_w2:
+                with st.form("create_wo_form"):
+                    st.markdown("**Issue New Repair Work Order**")
+                    f_reg_id = st.text_input("Grievance Reference:", value="NHAI/E/2026/87373")
+                    f_road = st.text_input("Road Location:", value="NH-48 Corridor Km 42")
+                    f_contractor = st.selectbox("Assign EPC Contractor:", ["L&T Infrastructure", "Dilip Buildcon", "IRB Infrastructure", "Municipal PWD Division"])
+                    f_depth = st.number_input("Measured Depth (cm):", value=5.2)
+                    f_vol = st.number_input("Void Volume (L):", value=3.4)
+                    f_repair = st.number_input("Asphalt Required (kg):", value=8.2)
+                    wo_submit = st.form_submit_button("Generate Work Order & BOQ")
 
-            st.markdown("---")
-            st.markdown("### 2. Target Government Authority")
-            portal_keys = list(config.GOV_PORTALS.keys())
-            portal_names = [f"{k}: {config.GOV_PORTALS[k]['name']}" for k in portal_keys]
-            selected_portal_idx = st.selectbox(
-                "Select Official Portal / Authority to File Complaint:",
-                range(len(portal_keys)),
-                format_func=lambda i: portal_names[i],
-            )
-            chosen_portal_key = portal_keys[selected_portal_idx]
-            chosen_portal = config.GOV_PORTALS[chosen_portal_key]
-
-            st.markdown(f"**Jurisdiction**: {chosen_portal['category']} | **Portal URL**: [{chosen_portal['url']}]({chosen_portal['url']})")
-
-            # Grievance statement preview
-            payload = build_grievance_payload(selected_defect, portal_key=chosen_portal_key)
-
-            st.markdown("### 3. Grievance Petition Dossier Preview")
-            with st.expander("📄 View Formal Grievance Letter & Telemetry Audit", expanded=True):
-                st.markdown(f"**Tracking Code**: `{payload['grievance_reference_no']}`")
-                st.markdown(f"**Ministry / Department**: {payload['ministry_department']}")
-                st.text_area("Official Citizen Statement", payload["official_statement"], height=120)
-
-                if selected_defect.get("image_path") and os.path.exists(selected_defect["image_path"]):
-                    st.image(selected_defect["image_path"], caption="Photometric Surface Evidence", width=360)
-
-            # Citizen Notifier preview
-            c_notifier = CitizenNotifier()
-            c_preview = c_notifier.format_grievance_filed_message(payload)
-
-            with st.expander("📲 Citizen WhatsApp & SMS Action Preview", expanded=False):
-                st.markdown("**1-Click WhatsApp Share Link:**")
-                st.link_button("📲 Open in WhatsApp Web / App", c_preview["whatsapp_url"], use_container_width=True)
-                st.markdown("**TRAI/DLT Compliant Compact SMS Dispatch (< 160 chars):**")
-                st.code(c_preview["sms_text"], language="text")
-                st.markdown(f"**Google Maps Navigation Pin:** [{c_preview['google_maps_url']}]({c_preview['google_maps_url']})")
-
-            # Actions
-            st.markdown("### 4. Dispatch & Transmission Controls")
-            col_act1, col_act2, col_act3 = st.columns(3)
-
-            with col_act1:
-                dispatch_btn = st.button("📤 DISPATCH GRIEVANCE TO PORTAL", type="primary", use_container_width=True)
-
-            with col_act2:
-                # Generate PDF button/preview
-                pdf_path = generate_complaint_pdf(payload, defect_image_path=selected_defect.get("image_path"))
-                if os.path.exists(pdf_path):
-                    with open(pdf_path, "rb") as f:
-                        pdf_data = f.read()
-                    st.download_button(
-                        "📄 DOWNLOAD COMPLAINT PDF DOSSIER",
-                        data=pdf_data,
-                        file_name=os.path.basename(pdf_path),
-                        mime="application/pdf",
-                        use_container_width=True,
+                if wo_submit:
+                    new_wo = wo_mgr.create_work_order(
+                        registry_id=f_reg_id,
+                        reference_no=f_reg_id,
+                        road_name=f_road,
+                        assigned_contractor=f_contractor,
+                        measured_depth_cm=f_depth,
+                        cavity_volume_liters=f_vol,
+                        asphalt_repair_mass_kg=f_repair,
                     )
+                    st.success(f"Work Order {new_wo['work_order_id']} issued! Total Cost: ₹{new_wo['total_cost_inr']:,}")
+                    st.rerun()
 
-            with col_act3:
-                st.link_button(
-                    f"🌐 Open {chosen_portal_key} Portal",
-                    url=chosen_portal["url"],
-                    use_container_width=True,
-                )
+        elif "Contractor" in gov_mode:
+            st.markdown("##### Highway Contractor Warranty & DLP Penalty Audit")
+            st.caption("Audits Defect Liability Period (DLP) compliance under MoRTH Section 10.3 and calculates statutory liquidated damages (₹25,000/day).")
 
-            if dispatch_btn:
-                with st.spinner("Submitting complaint dossier to official portal webhook / grievance queue..."):
-                    res = dispatch_grievance_to_portal(selected_defect, portal_key=chosen_portal_key)
-                    # Notify and log citizen dispatch
-                    c_notifier.notify(
-                        event_dict={**selected_defect, "reference_no": res["reference_number"], "target_portal": res["target_portal"]},
-                        notification_type="GRIEVANCE_FILED",
-                    )
+            auditor = HighwayContractorAuditor()
+            projects = auditor.get_all_projects()
 
-                st.success(
-                    f"✅ Grievance Petition Successfully Dispatched!\n\n"
-                    f"- **Official Reference No**: `{res['reference_number']}`\n"
-                    f"- **Target Portal**: {res['target_portal']}\n"
-                    f"- **Transmission Status**: {res['api_status']}\n"
-                    f"- **Audit PDF Saved**: `{os.path.basename(res['pdf_path'])}`"
-                )
-                st.balloons()
+            if projects:
+                proj_names = [f"{p['project_code']}: {p['project_name']} ({p['contractor_name']})" for p in projects]
+                sel_proj_idx = st.selectbox("Select Highway EPC Contract:", range(len(projects)), format_func=lambda i: proj_names[i])
+                chosen_proj = projects[sel_proj_idx]
 
-            st.markdown("---")
-            st.markdown("### 5. Citizen Notifications & Driver Alert Audit Log")
-            notif_df = c_notifier.get_notification_history_df(limit=25)
-            if not notif_df.empty:
-                display_cols = [c for c in ["timestamp", "reference_no", "notification_type", "recipient_phone", "sms_text", "delivery_status"] if c in notif_df.columns]
-                st.dataframe(notif_df[display_cols], use_container_width=True)
-            else:
-                st.caption("No citizen notifications dispatched yet. As defects are tracked or filed, driver alerts will be archived here.")
+                audit_res = auditor.audit_project_stretch(chosen_proj["project_id"])
 
-    # =======================================================================
-    # MODE 6: PCI & FLEET DEGRADATION ANALYTICS
-    # =======================================================================
-    elif "PCI" in app_mode or "Degradation" in app_mode:
-        st.subheader("Pavement Condition Index (PCI) & Multi-Drive Fleet Analytics")
-        st.info(
-            "Highway maintenance engineering analytics compliant with **IRC:82-2015**, **IRC:SP:16**, "
-            "and **ASTM D6433**. Computes overall Pavement Condition Index (PCI, 0-100), tracks historical pothole "
-            "growth velocity across repeat drives over identical GPS coordinates, and flags imminent pavement collapse hazards."
-        )
+                c_aud1, c_aud2, c_aud3, c_aud4 = st.columns(4)
+                c_aud1.metric("Defects on Stretch", audit_res["total_defects_found"])
+                c_aud2.metric("Contractor Liability", f"₹{audit_res['contractor_liability_inr']:,}")
+                c_aud3.metric("Liquidated Penalties", f"₹{audit_res['daily_liquidated_damages_inr']:,}")
+                c_aud4.metric("Contractor Grade", audit_res["contractor_performance_tier"])
 
-        tracker = PotholeDegradationTracker()
-        distress_classifier = PavementDistressClassifier()
-
-        defects_df = get_all_defects()
-        clusters_df = tracker.get_all_clusters()
-        fleet_summary = tracker.get_fleet_summary()
-
-        defects_list = defects_df.to_dict(orient="records") if not defects_df.empty else []
-        pci_results = distress_classifier.compute_pci_rating(defects_list)
-
-        # KPI Metrics
-        p_m1, p_m2, p_m3, p_m4 = st.columns(4)
-        with p_m1:
-            st.markdown(
-                f'<div class="metric-card">'
-                f'<div class="metric-value" style="color:{pci_results["color_hex"]};">{pci_results["pci_score"]} / 100</div>'
-                f'<div class="metric-label">Pavement Condition Index (PCI)</div>'
-                f'</div>',
-                unsafe_allow_html=True,
-            )
-        with p_m2:
-            st.markdown(
-                f'<div class="metric-card">'
-                f'<div class="metric-value">{pci_results["rating"]}</div>'
-                f'<div class="metric-label">IRC Quality Grade</div>'
-                f'</div>',
-                unsafe_allow_html=True,
-            )
-        with p_m3:
-            st.markdown(
-                f'<div class="metric-card">'
-                f'<div class="metric-value" style="color:#e74c3c;">{fleet_summary["critical_collapse_count"]}</div>'
-                f'<div class="metric-label">Critical Collapse Risks</div>'
-                f'</div>',
-                unsafe_allow_html=True,
-            )
-        with p_m4:
-            st.markdown(
-                f'<div class="metric-card">'
-                f'<div class="metric-value" style="color:#e67e22;">{fleet_summary["rapid_growth_count"]}</div>'
-                f'<div class="metric-label">Rapid Degradation Potholes</div>'
-                f'</div>',
-                unsafe_allow_html=True,
-            )
-
-        st.markdown("---")
-        st.markdown(f"#### 🛠️ Recommended Municipal PWD Strategy")
-        st.success(f"**{pci_results['pwd_strategy']}**")
-
-        t_c1, t_c2 = st.tabs(["📊 IRC Distress Taxonomy Breakdown", "📈 Multi-Drive Pothole Growth Timeline"])
-
-        with t_c1:
-            st.markdown("##### Distribution of Pavement Distress Categories (IRC:82-2015)")
-            if pci_results["breakdown"]:
-                b_df = pd.DataFrame(list(pci_results["breakdown"].items()), columns=["IRC Distress Category", "Count"])
-                st.bar_chart(b_df.set_index("IRC Distress Category"))
-            else:
-                st.caption("No distresses logged in the database yet.")
-
-        with t_c2:
-            st.markdown("##### Geographically Clustered Multi-Drive Degradation Entities")
-            if not clusters_df.empty:
-                st.dataframe(clusters_df, use_container_width=True)
-            else:
-                st.info("No multi-drive clusters recorded yet. As vehicles survey the same roads repeatedly, temporal growth curves appear here.")
-
-    # =======================================================================
-    # MODE 7: PWD CONTRACTOR WARRANTY & HIGHWAY PENALTY AUDIT
-    # =======================================================================
-    elif "Contractor" in app_mode or "Warranty" in app_mode:
-        st.subheader("Highway Contractor Performance, Warranty & Legal Penalty Audit")
-        st.info(
-            "Enforcement interface for **Ministry of Road Transport and Highways (MoRTH)** and "
-            "**National Highways Authority of India (NHAI)** standard contracts. "
-            "Under Section 10.3 and IRC:SP:84, private construction contractors are bound by a 3-to-5 year **Defect Liability Period (DLP)**. "
-            "This engine audits road quality degradation, calculates statutory liquidated damages (₹25,000/day per unpatched defect), "
-            "and generates official contractor penalty dossiers and debarment / blacklist recommendations."
-        )
-
-        auditor = HighwayContractorAuditor()
-        projects = auditor.get_all_projects()
-
-        if not projects:
-            st.warning("No contractor projects registered.")
-        else:
-            proj_labels = [f"[{p['project_id']}] {p['highway_name']} ({p['contractor_name']})" for p in projects]
-            sel_p_idx = st.selectbox(
-                "Select Highway Construction & Maintenance Contract:",
-                range(len(proj_labels)),
-                format_func=lambda i: proj_labels[i],
-            )
-            chosen_proj = projects[sel_p_idx]
-
-            col_p1, col_p2, col_p3 = st.columns(3)
-            with col_p1:
-                st.write(f"**Contractor**: {chosen_proj['contractor_name']}")
-                st.write(f"**Contract Value**: ₹ {chosen_proj['contract_value_cr_inr']:.1f} Crores")
-            with col_p2:
-                st.write(f"**Chainage**: Km {chosen_proj['chainage_start_km']} to Km {chosen_proj['chainage_end_km']}")
-                st.write(f"**Commissioning Date**: `{chosen_proj['completion_date']}`")
-            with col_p3:
-                st.write(f"**DLP Period**: {chosen_proj['dlp_period_years']:.0f} Years")
-                st.write(f"**Superintending Office**: {chosen_proj['project_director_office']}")
-
-            st.markdown("---")
-            run_audit_btn = st.button("🔍 EXECUTE CONTRACTOR STATUTORY COMPLIANCE AUDIT", type="primary", use_container_width=True)
-
-            if run_audit_btn or f"audit_{chosen_proj['project_id']}" in st.session_state:
-                if run_audit_btn:
-                    with st.spinner("Analyzing road telemetry, PCI drop & contractual penalty clauses..."):
-                        st.session_state[f"audit_{chosen_proj['project_id']}"] = auditor.audit_project_stretch(chosen_proj['project_id'])
-
-                audit_res = st.session_state[f"audit_{chosen_proj['project_id']}"]
-
-                # Display Results
-                st.markdown("### 📊 Audit Findings & Liquidated Penalty Determination")
-
-                m_col1, m_col2, m_col3, m_col4 = st.columns(4)
-                with m_col1:
-                    st.markdown(
-                        f'<div class="metric-card"><div class="metric-value">{audit_res["current_pci"]}/100</div>'
-                        f'<div class="metric-label">Current PCI (Drop: -{audit_res["pci_drop"]})</div></div>',
-                        unsafe_allow_html=True
-                    )
-                with m_col2:
-                    st.markdown(
-                        f'<div class="metric-card"><div class="metric-value">{audit_res["total_defects_found"]}</div>'
-                        f'<div class="metric-label">Defects Found ({audit_res["defect_density_per_km"]}/km)</div></div>',
-                        unsafe_allow_html=True
-                    )
-                with m_col3:
-                    st.markdown(
-                        f'<div class="metric-card"><div class="metric-value" style="color:#e74c3c;">₹ {audit_res["liquidated_penalty_inr"]:,}</div>'
-                        f'<div class="metric-label">Liquidated Damages Levied</div></div>',
-                        unsafe_allow_html=True
-                    )
-                with m_col4:
-                    status_col = "#27ae60" if audit_res["compliance_status"] == "COMPLIANT" else "#c0392b"
-                    st.markdown(
-                        f'<div class="metric-card"><div class="metric-value" style="color:{status_col}; font-size:15px;">{audit_res["compliance_status"].replace("_", " ")}</div>'
-                        f'<div class="metric-label">Statutory Status</div></div>',
-                        unsafe_allow_html=True
-                    )
-
-                # Directive Box
-                st.markdown("---")
-                if audit_res["compliance_status"] == "COMPLIANT":
-                    st.success(f"✅ **CONTRACTOR COMPLIANT**: {audit_res['action_recommendation']}")
-                elif audit_res["compliance_status"] == "BLACKLIST_RECOMMENDED":
-                    st.error(f"🚨 **PREMATURE ROAD COLLAPSE DETECTED**: {audit_res['action_recommendation']}")
-                else:
-                    st.warning(f"⚠️ **SHOW CAUSE & PENALTY DIRECTIVE**: {audit_res['action_recommendation']}")
-
-                # PDF Generation & Download
                 pdf_audit_path = auditor.generate_audit_pdf(audit_res)
                 if os.path.exists(pdf_audit_path):
-                    with open(pdf_audit_path, "rb") as f_pdf:
-                        pdf_data = f_pdf.read()
-                    st.download_button(
-                        label="📄 Download Official Ministry Contractor Penalty Dossier (PDF)",
-                        data=pdf_data,
-                        file_name=os.path.basename(pdf_audit_path),
-                        mime="application/pdf",
-                        use_container_width=True,
-                    )
+                    with open(pdf_audit_path, "rb") as f_audit:
+                        st.download_button("Download Statutory Contractor Audit Dossier (PDF)", f_audit.read(), os.path.basename(pdf_audit_path), "application/pdf", use_container_width=True)
 
-    # =======================================================================
-    # MODE 8: MUNICIPAL PWD WORK ORDERS & REPAIR RESOLUTION
-    # =======================================================================
-    elif "Municipal" in app_mode or "Work Orders" in app_mode:
-        st.subheader("Municipal PWD Work Orders, Repair Verification & SLA Resolution")
-        st.info(
-            "Empowers Municipal Corporations, PWD divisions, and NHAI engineers to issue repair work orders, "
-            "enforce statutory **72-hour MoRTH Section 10 SLAs**, audit Bill of Quantities (BOQ), "
-            "verify repaired surfaces, and auto-dispatch resolution alerts to citizens."
-        )
+        elif "PCI" in gov_mode:
+            st.markdown("##### Pavement Condition Index (PCI) & Distress Taxonomy")
+            st.caption("Standardized roadway quality rating (0 to 100) according to IRC:82-2015 and ASTM D6433.")
 
-        wo_mgr = MunicipalWorkOrderManager()
-        work_orders_df = wo_mgr.get_all_work_orders_df()
-        all_wo = wo_mgr.get_all_work_orders()
+            distress_clf = PavementDistressClassifier()
+            defects_list = defects_df.to_dict(orient="records") if not defects_df.empty else []
+            pci_res = distress_clf.compute_pci_rating(defects_list)
 
-        # Overview Metrics
-        total_wo = len(work_orders_df)
-        active_wo = sum(1 for w in all_wo if w.get("status") != "REPAIRED_VERIFIED")
-        repaired_wo = sum(1 for w in all_wo if w.get("status") == "REPAIRED_VERIFIED")
-        breached_wo = sum(1 for w in all_wo if w.get("dynamic_sla_status") == "SLA_BREACHED")
-
-        w_col1, w_col2, w_col3, w_col4 = st.columns(4)
-        with w_col1:
-            st.markdown(f'<div class="metric-card"><div class="metric-value">{total_wo}</div><div class="metric-label">Total Work Orders</div></div>', unsafe_allow_html=True)
-        with w_col2:
-            st.markdown(f'<div class="metric-card"><div class="metric-value" style="color:#2980b9;">{active_wo}</div><div class="metric-label">Active Under Repair</div></div>', unsafe_allow_html=True)
-        with w_col3:
-            breach_color = "#c0392b" if breached_wo > 0 else "#27ae60"
-            st.markdown(f'<div class="metric-card"><div class="metric-value" style="color:{breach_color};">{breached_wo}</div><div class="metric-label">SLA Breached (>72h)</div></div>', unsafe_allow_html=True)
-        with w_col4:
-            st.markdown(f'<div class="metric-card"><div class="metric-value" style="color:#27ae60;">{repaired_wo}</div><div class="metric-label">Repaired & Verified</div></div>', unsafe_allow_html=True)
-
-        st.markdown("---")
-
-        tab_issue, tab_sla, tab_verify = st.tabs([
-            "📋 Issue Municipal Work Order & BOQ",
-            "⏱️ Live SLA Breach & Compliance Tracker",
-            "✅ Verify Repair & Close Case",
-        ])
-
-        # TAB 1: ISSUE WORK ORDER
-        with tab_issue:
-            st.markdown("#### Assign Contractor & Issue Statutory Work Order")
-            defects_df = get_all_defects()
-
-            # Filter for defects with valid GPS and docket references
-            candidates = []
-            if not defects_df.empty:
-                for idx, r in defects_df.iterrows():
-                    ref = r.get("grievance_ref_no") or f"CPGRAMS/E/2026/{10000 + int(r.get('id', 1))}"
-                    lat_val = float(r["latitude"]) if pd.notnull(r.get("latitude")) else 28.6139
-                    lon_val = float(r["longitude"]) if pd.notnull(r.get("longitude")) else 77.2090
-                    candidates.append({
-                        "label": f"[{r['detection_id']}] Ref: {ref} | Sev: {r.get('severity_category', 'Medium')} | Lat: {lat_val:.4f}, Lon: {lon_val:.4f}",
-                        "ref": ref,
-                        "lat": lat_val,
-                        "lon": lon_val,
-                        "sev": r.get("severity_category", "Medium"),
-                        "depth": float(r.get("max_depth_cm", 5.0)) if "max_depth_cm" in r and pd.notnull(r.get("max_depth_cm")) else 5.2,
-                        "vol": float(r.get("cavity_volume_liters", 3.0)) if "cavity_volume_liters" in r and pd.notnull(r.get("cavity_volume_liters")) else 3.5,
-                        "img": r.get("image_path"),
-                    })
-
-            if not candidates:
-                # Provide a realistic highway sample
-                candidates.append({
-                    "label": "[DEF_NH48_KMP42] Ref: NHAI/E/2026/04918 | Sev: High | Lat: 28.5383, Lon: 77.2431",
-                    "ref": "NHAI/E/2026/04918",
-                    "lat": 28.5383,
-                    "lon": 77.2431,
-                    "sev": "High",
-                    "depth": 6.8,
-                    "vol": 16.4,
-                    "img": None,
-                })
-
-            chosen_idx = st.selectbox("Select Reported Pothole Grievance:", range(len(candidates)), format_func=lambda i: candidates[i]["label"])
-            chosen = candidates[chosen_idx]
-
-            col_w1, col_w2 = st.columns(2)
-            with col_w1:
-                assigned_contractor = st.selectbox(
-                    "Assign Registered EPC Highway Contractor:",
-                    [
-                        "M/s Apex Infrastructure & Highway Builders Ltd. (DLP Active)",
-                        "M/s Bharat Roadways & Infra Concessions Pvt Ltd. (DLP Active)",
-                        "M/s Skylark Expressways & Tollway Maintenance Ltd.",
-                        "PWD Zonal Term Maintenance Division",
-                    ]
-                )
-                engineer_name = st.text_input("Supervising PWD Engineer:", value="Er. S. Sharma (AE PWD Road Division)")
-                road_stretch = st.text_input("Highway Corridor / Road Stretch:", value="National Highway 48 (Delhi - Gurugram Expressway)")
-
-            with col_w2:
-                depth_in = st.number_input("Max Measured Depth (cm):", value=float(chosen["depth"]), min_value=1.0, max_value=30.0, step=0.5)
-                vol_in = st.number_input("Cavity Volume (Liters):", value=float(chosen["vol"]), min_value=0.5, max_value=200.0, step=0.5)
-                boq_preview = wo_mgr.compute_boq_and_cost(depth_in, vol_in, vol_in * 2.4)
-                st.markdown(
-                    f"**Approved Schedule of Rates (SoR) Estimate:**\n\n"
-                    f"- Bitumen Cold/Hot Mix: `{boq_preview['asphalt_mass_kg']} kg`\n"
-                    f"- Materials & Tack Coat: `₹ {boq_preview['material_cost_inr']:,.2f}`\n"
-                    f"- Machinery & Crew: `₹ {boq_preview['operational_cost_inr']:,.2f}`\n"
-                    f"- **Total Budget**: `₹ {boq_preview['total_estimated_inr']:,.2f} INR`"
-                )
-
-            if st.button("🔨 ISSUE OFFICIAL PWD WORK ORDER", type="primary", use_container_width=True):
-                new_wo = wo_mgr.create_work_order(
-                    reference_no=chosen["ref"],
-                    road_name=road_stretch,
-                    latitude=chosen["lat"],
-                    longitude=chosen["lon"],
-                    contractor_name=assigned_contractor.split(" (")[0],
-                    assigned_engineer=engineer_name,
-                    priority=chosen["sev"],
-                    max_depth_cm=depth_in,
-                    cavity_volume_liters=vol_in,
-                    asphalt_repair_mass_kg=boq_preview["asphalt_mass_kg"],
-                    before_image_path=chosen.get("img"),
-                )
-                st.success(
-                    f"✅ **Work Order Successfully Issued!**\n\n"
-                    f"- **Work Order ID**: `{new_wo['work_order_id']}`\n"
-                    f"- **Contractor**: {new_wo['contractor_name']}\n"
-                    f"- **Statutory SLA**: 72 Hours (Deadline: `{new_wo['target_completion_at'][:19]}`)\n"
-                    f"- **Approved BOQ**: ₹ {new_wo['estimated_cost_inr']:,.2f} INR"
-                )
-
-                # Generate PDF
-                pdf_wo_path = wo_mgr.generate_work_order_pdf(new_wo["work_order_id"])
-                if os.path.exists(pdf_wo_path):
-                    with open(pdf_wo_path, "rb") as f_wo:
-                        wo_pdf_bytes = f_wo.read()
-                    st.download_button(
-                        label="📄 Download Official PWD Work Order PDF Dossier",
-                        data=wo_pdf_bytes,
-                        file_name=os.path.basename(pdf_wo_path),
-                        mime="application/pdf",
-                        use_container_width=True,
-                    )
-                st.balloons()
-
-        # TAB 2: LIVE SLA COMPLIANCE TRACKER
-        with tab_sla:
-            st.markdown("#### Live SLA Breach & Contractor Liquidated Penalties Monitor")
-            st.caption("Under MoRTH Section 10 road specifications, defects must be rectified within 72 hours. Overdue repairs accrue ₹25,000/day penalties.")
-
-            if not work_orders_df.empty:
-                display_df = work_orders_df[[
-                    "work_order_id", "reference_no", "road_name", "contractor_name",
-                    "status", "dynamic_sla_status", "hours_elapsed", "hours_remaining",
-                    "estimated_cost_inr", "accrued_penalty_inr"
-                ]].copy()
-                st.dataframe(display_df, use_container_width=True)
-            else:
-                st.info("No work orders created yet. Issue a work order in the first tab to initiate SLA monitoring.")
-
-        # TAB 3: VERIFY REPAIR & CLOSE CASE
-        with tab_verify:
-            st.markdown("#### Photometric Surface Verification & Citizen Resolution")
-            active_orders = [w for w in all_wo if w.get("status") != "REPAIRED_VERIFIED"]
-
-            if not active_orders:
-                st.success("🎉 No pending repairs! All issued PWD work orders have been certified and completed.")
-            else:
-                wo_labels = [f"[{w['work_order_id']}] Ref: {w['reference_no']} | Stretch: {w['road_name'][:30]} | SLA: {w['dynamic_sla_status']}" for w in active_orders]
-                chosen_wo_idx = st.selectbox("Select Work Order to Inspect & Certify:", range(len(wo_labels)), format_func=lambda i: wo_labels[i])
-                target_wo = active_orders[chosen_wo_idx]
-
-                st.markdown(f"**Work Order ID:** `{target_wo['work_order_id']}` | **Contractor:** {target_wo['contractor_name']}")
-                st.markdown(f"**Location:** {target_wo['road_name']} (`{target_wo['latitude']:.5f}, {target_wo['longitude']:.5f}`)")
-
-                eng_notes = st.text_area(
-                    "Engineer Quality Certification Notes:",
-                    value="Visual inspection completed. Bitumen cold mix asphalt placed, leveled flush with surrounding pavement, compacted to 98% laboratory density. Zero water ponding depressions.",
-                    height=90,
-                )
-
-                notify_cb = st.checkbox("📲 Automatically dispatch resolution WhatsApp & SMS to reporting citizen driver", value=True)
-
-                if st.button("✅ CERTIFY REPAIR & CLOSE GRIEVANCE", type="primary", use_container_width=True):
-                    close_res = wo_mgr.verify_and_close_repair(
-                        work_order_id=target_wo["work_order_id"],
-                        engineer_notes=eng_notes,
-                        notify_citizens=notify_cb,
-                    )
-                    st.success(
-                        f"🎉 **Repair Certified & Case Closed!**\n\n"
-                        f"- **Work Order**: `{close_res['work_order_id']}`\n"
-                        f"- **Final SLA Status**: {close_res['sla_evaluation']['sla_status']} ({close_res['sla_evaluation']['hours_elapsed']}h elapsed)\n"
-                        f"- **Grievance Status**: Closed in SQLite registry and government docket.\n"
-                    )
-                    if close_res.get("citizen_notification"):
-                        st.markdown("**Citizen WhatsApp Resolution Alert Sent:**")
-                        st.link_button("📲 View WhatsApp Resolution Link", close_res["citizen_notification"]["whatsapp_url"], use_container_width=True)
-                        st.code(close_res["citizen_notification"]["sms_text"], language="text")
-                    st.balloons()
+            c_pci1, c_pci2 = st.columns(2)
+            with c_pci1:
+                st.metric("Pavement Condition Index (PCI)", f"{pci_res['pci_score']} / 100", pci_res["rating"])
+                st.info(f"Recommended Maintenance Strategy: {pci_res['pwd_strategy']}")
+            with c_pci2:
+                if pci_res["breakdown"]:
+                    b_df = pd.DataFrame(list(pci_res["breakdown"].items()), columns=["Distress Category", "Count"])
+                    st.bar_chart(b_df.set_index("Distress Category"))
+                else:
+                    st.caption("No defects recorded yet.")
 
 
 if __name__ == "__main__":

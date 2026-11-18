@@ -194,10 +194,14 @@ class VehicleDashcamAutoReporter:
                     "source": "External GPS Hardware / Log",
                 }
 
-        # Fallback to realistic route simulator
-        sim = self.simulated_gps.step(delta_sec=max(0.05, 1.0 / 30.0 * self.sample_interval))
-        sim["source"] = "Autonomous In-Vehicle Dead Reckoning"
-        return sim
+        # No dynamic simulation when external telemetry is not provided
+        return {
+            "latitude": None,
+            "longitude": None,
+            "speed_kmh": 0.0,
+            "heading_deg": 0.0,
+            "source": "Ungeotagged",
+        }
 
     def _check_severity_eligible(self, category: str) -> bool:
         """Verify if defect category meets the configured dispatch threshold."""
@@ -480,15 +484,17 @@ class VehicleDashcamAutoReporter:
                 evidence_img_path = self.save_pothole_evidence(frame_bgr, cand, t_id, det_id)
 
                 # Resolve reverse-geocoded road address
-                lat = telemetry["latitude"]
-                lon = telemetry["longitude"]
-                loc_key = f"{round(lat, 3)}_{round(lon, 3)}"
-
-                if loc_key in self.cached_road_info:
-                    loc_info = self.cached_road_info[loc_key]
+                lat = telemetry.get("latitude")
+                lon = telemetry.get("longitude")
+                if lat is not None and lon is not None:
+                    loc_key = f"{round(lat, 3)}_{round(lon, 3)}"
+                    if loc_key in self.cached_road_info:
+                        loc_info = self.cached_road_info[loc_key]
+                    else:
+                        loc_info = reverse_geocode_location(lat, lon)
+                        self.cached_road_info[loc_key] = loc_info
                 else:
-                    loc_info = reverse_geocode_location(lat, lon)
-                    self.cached_road_info[loc_key] = loc_info
+                    loc_info = {"road": "Recorded Highway Survey", "city": "On-Device", "state": "Local"}
 
                 # Multi-drive fleet degradation & growth velocity tracking
                 degradation = self.degradation_tracker.record_sighting(
@@ -791,14 +797,12 @@ class VehicleDashcamAutoReporter:
         # Header Title
         cv2.putText(hud, "VEHICLE DASHCAM AUTO-REPORTER (3D METRIC & ADAS)", (14, 22), cv2.FONT_HERSHEY_SIMPLEX, 0.50, (255, 255, 255), 2, cv2.LINE_AA)
 
-        # Live telemetry tags
-        lat = telemetry.get("latitude", 0.0)
-        lon = telemetry.get("longitude", 0.0)
-        speed = telemetry.get("speed_kmh", 40.0)
-        gz_val = telemetry.get("accel_z", 1.02)
+        # Pavement telemetry tags
+        lat = telemetry.get("latitude")
+        lon = telemetry.get("longitude")
         veh_code = self.suspension_profiler.profile_key.replace('_', ' ')
-        soc_temp = self.power_mgr.query_hardware_thermal_sensor()
-        telem_str = f"SPEED: {speed:.0f} km/h  |  GPS: {lat:.5f}, {lon:.5f}  |  Gz: {gz_val:.2f}g  |  SoC: {soc_temp:.0f}C  |  {veh_code}"
+        gps_display = f"GPS: {lat:.5f}, {lon:.5f}" if (lat is not None and lon is not None) else "GPS: UNGEOTAGGED"
+        telem_str = f"STATUS: RUNNING  |  {gps_display}  |  {veh_code}"
         cv2.putText(hud, telem_str, (14, 44), cv2.FONT_HERSHEY_SIMPLEX, 0.40, (0, 255, 200), 1, cv2.LINE_AA)
 
         # Status badge (top right)

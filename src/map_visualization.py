@@ -62,7 +62,8 @@ def build_geographic_map(
         zoom_start = config.DEFAULT_MAP_ZOOM
 
     # Filter invalid GPS
-    valid_df = defects_df.dropna(subset=["latitude", "longitude"]).copy() if not defects_df.empty else pd.DataFrame()
+    has_coords = isinstance(defects_df, pd.DataFrame) and "latitude" in defects_df.columns and "longitude" in defects_df.columns
+    valid_df = defects_df.dropna(subset=["latitude", "longitude"]).copy() if (has_coords and not defects_df.empty) else pd.DataFrame()
 
     if severity_filter and not valid_df.empty:
         valid_df = valid_df[valid_df["severity_category"].isin(severity_filter)]

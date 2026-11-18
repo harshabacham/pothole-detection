@@ -133,6 +133,17 @@ class PotholeDegradationTracker:
         if timestamp is None:
             timestamp = datetime.now().isoformat()
 
+        if lat is None or lon is None:
+            return {
+                "cluster_id": "UNGEOTAGGED",
+                "is_new_cluster": False,
+                "observation_count": 1,
+                "growth_percent": 0.0,
+                "growth_rate_l_per_week": 0.0,
+                "degradation_status": "STABLE",
+                "days_tracked": 0.0,
+            }
+
         cluster_id, cluster_obj, _ = self.find_nearest_cluster(lat, lon)
         conn = get_db_connection(self.db_path)
         cursor = conn.cursor()

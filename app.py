@@ -436,9 +436,8 @@ def main():
             </div>
         </div>
         <div class="status-group">
-            <span class="status-pill live"><span class="pulse-dot"></span> Live Telemetry Engine (32 FPS)</span>
-            <span class="status-pill">GPS: 10Hz Locked</span>
-            <span class="status-pill">MoRTH SLA: Active</span>
+            <span class="status-pill">Unsupervised Vision Pipeline</span>
+            <span class="status-pill">MoRTH Section 10 SLA</span>
         </div>
     </div>
     """, unsafe_allow_html=True)
@@ -710,7 +709,6 @@ def main():
                         st.markdown("##### Video Input & Detection Overlay")
                         video_placeholder = st.empty()
                         progress_bar = st.progress(0.0)
-                        telemetry_ticker = st.empty()
 
                     with c_events:
                         st.markdown("##### Logged Defect Incidents")
@@ -742,16 +740,6 @@ def main():
                         video_placeholder.image(bgr_to_rgb(annotated_frame), use_container_width=True)
                         progress_pct = min(1.0, float(sampled_num) / 60.0)
                         progress_bar.progress(progress_pct)
-
-                        telemetry_ticker.markdown(f"""
-                        <div class="telemetry-strip">
-                            <span>LAT: <strong>{telem.get('latitude', 0.0):.5f}</strong></span>
-                            <span>LON: <strong>{telem.get('longitude', 0.0):.5f}</strong></span>
-                            <span>SPEED: <strong>{telem.get('speed_kmh', 45):.0f} km/h</strong></span>
-                            <span>ACCEL: <strong>{telem.get('accel_z', 1.02):.2f}g</strong></span>
-                            <span>FRAME: <strong>{frame_num}</strong></span>
-                        </div>
-                        """, unsafe_allow_html=True)
 
                         if new_events:
                             all_dispatched.extend(new_events)
@@ -1032,7 +1020,7 @@ def main():
             st.markdown("##### GIS Export Channels")
             st.caption("Standardized OGC GeoJSON, Google Earth KML, and Smart City WMS feeds.")
 
-            g_bytes = geojson_to_bytes(export_defects_to_geojson(defects_df))
+            g_bytes = geojson_to_bytes(defects_df)
             st.download_button("Export GeoJSON (QGIS)", g_bytes, "pothole_survey.geojson", "application/geo+json", use_container_width=True)
 
             kml_data = kml_to_bytes(defects_df)
@@ -1129,11 +1117,16 @@ def main():
                         cat_lower = str(cat).lower()
                         card_border_cls = "critical" if cat_lower == "high" else "elevated" if cat_lower == "medium" else "monitored"
                         chip_cls = "chip-critical" if cat_lower == "high" else "chip-elevated" if cat_lower == "medium" else "chip-monitored"
-                        d_cm = float(row.get("bev_area_sqcm", 400.0) / 100.0) if pd.notnull(row.get("bev_area_sqcm")) else 5.2
-                        vol_l = round(d_cm * 0.65, 1)
+                        has_bev = pd.notnull(row.get("bev_area_sqcm"))
+                        d_cm = float(row["bev_area_sqcm"] / 100.0) if has_bev else None
+                        vol_l = round(d_cm * 0.65, 1) if d_cm is not None else None
 
-                        lat = float(row["latitude"]) if pd.notnull(row["latitude"]) else 28.5383
-                        lon = float(row["longitude"]) if pd.notnull(row["longitude"]) else 77.2431
+                        has_gps = pd.notnull(row.get("latitude")) and pd.notnull(row.get("longitude"))
+                        lat_val = float(row["latitude"]) if has_gps else None
+                        lon_val = float(row["longitude"]) if has_gps else None
+                        gps_str = f"{lat_val:.4f}, {lon_val:.4f}" if has_gps else "Ungeotagged"
+                        depth_str = f"{d_cm:.1f} cm" if d_cm is not None else "N/A"
+                        vol_str = f"{vol_l:.1f} L" if vol_l is not None else "N/A"
                         img_path = row.get("image_path")
 
                         col_card_img, col_card_info, col_card_act = st.columns([1.1, 1.9, 1.4])
@@ -1159,15 +1152,15 @@ def main():
                                 <div class="card-metrics-grid">
                                     <div class="card-metric-item">
                                         <span class="card-metric-label">GPS Lat/Lon</span>
-                                        <span class="card-metric-val">{lat:.4f}, {lon:.4f}</span>
+                                        <span class="card-metric-val">{gps_str}</span>
                                     </div>
                                     <div class="card-metric-item">
                                         <span class="card-metric-label">Est. Depth</span>
-                                        <span class="card-metric-val">{d_cm:.1f} cm</span>
+                                        <span class="card-metric-val">{depth_str}</span>
                                     </div>
                                     <div class="card-metric-item">
                                         <span class="card-metric-label">Void Vol</span>
-                                        <span class="card-metric-val">{vol_l:.1f} L</span>
+                                        <span class="card-metric-val">{vol_str}</span>
                                     </div>
                                     <div class="card-metric-item">
                                         <span class="card-metric-label">Timestamp</span>

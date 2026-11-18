@@ -101,9 +101,30 @@ def export_defects_to_geojson(
     return output_path
 
 
-def geojson_to_bytes(defects_df: pd.DataFrame) -> bytes:
-    """Serialize defect records into GeoJSON byte stream for in-browser download."""
-    valid_df = defects_df.dropna(subset=["latitude", "longitude"]).copy() if not defects_df.empty else pd.DataFrame()
+def geojson_to_bytes(defects_data) -> bytes:
+    """Serialize defect records or GeoJSON filepath into GeoJSON byte stream for in-browser download."""
+    if isinstance(defects_data, bytes):
+        return defects_data
+    if isinstance(defects_data, str):
+        if os.path.exists(defects_data):
+            try:
+                with open(defects_data, "rb") as f:
+                    return f.read()
+            except Exception:
+                pass
+        try:
+            return defects_data.encode("utf-8")
+        except Exception:
+            pass
+    if isinstance(defects_data, dict):
+        return json.dumps(defects_data, indent=2).encode("utf-8")
+
+    if not isinstance(defects_data, pd.DataFrame):
+        return json.dumps({"type": "FeatureCollection", "features": []}, indent=2).encode("utf-8")
+
+    defects_df = defects_data
+    has_coords = "latitude" in defects_df.columns and "longitude" in defects_df.columns
+    valid_df = defects_df.dropna(subset=["latitude", "longitude"]).copy() if (not defects_df.empty and has_coords) else pd.DataFrame()
     features = []
 
     for _, row in valid_df.iterrows():
@@ -167,7 +188,8 @@ def kml_to_bytes(defects_df: pd.DataFrame, extrude_3d: bool = True) -> bytes:
 
 def _generate_kml_content(defects_df: pd.DataFrame, extrude_3d: bool = True) -> str:
     """Internal helper to construct standard OGC KML with 3D extrusions."""
-    valid_df = defects_df.dropna(subset=["latitude", "longitude"]).copy() if not defects_df.empty else pd.DataFrame()
+    has_coords = isinstance(defects_df, pd.DataFrame) and "latitude" in defects_df.columns and "longitude" in defects_df.columns
+    valid_df = defects_df.dropna(subset=["latitude", "longitude"]).copy() if (has_coords and not defects_df.empty) else pd.DataFrame()
 
     kml_placemarks = []
 
@@ -294,7 +316,8 @@ def export_smart_city_wms_feed(defects_df: pd.DataFrame) -> dict:
     Generate an Integrated Command and Control Center (ICCC) Smart City API payload.
     Compliant with Ministry of Housing and Urban Affairs (MoHUA) Smart Cities Mission standards.
     """
-    valid_df = defects_df.dropna(subset=["latitude", "longitude"]).copy() if not defects_df.empty else pd.DataFrame()
+    has_coords = isinstance(defects_df, pd.DataFrame) and "latitude" in defects_df.columns and "longitude" in defects_df.columns
+    valid_df = defects_df.dropna(subset=["latitude", "longitude"]).copy() if (has_coords and not defects_df.empty) else pd.DataFrame()
 
     total_records = len(valid_df)
     critical_records = int((valid_df["severity_category"] == "High").sum()) if "severity_category" in valid_df.columns else 0

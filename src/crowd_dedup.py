@@ -215,7 +215,9 @@ class CrowdsourcedSpatialDeduplicator:
         Called only when no existing match was found.
         """
         now_str = datetime.now().isoformat()
-        registry_id = f"GRV_{int(lat * 10000)}_{int(lon * 10000)}_{datetime.now().strftime('%Y%m%d%H%M%S')}"
+        lat_tag = f"{int(lat * 10000)}" if lat is not None else "UNGEOTAGGED"
+        lon_tag = f"{int(lon * 10000)}" if lon is not None else "0"
+        registry_id = f"GRV_{lat_tag}_{lon_tag}_{datetime.now().strftime('%Y%m%d%H%M%S')}"
 
         conn = get_db_connection(self.db_path)
         cursor = conn.cursor()

@@ -852,7 +852,7 @@ def main():
             with cfg_col1:
                 feed_opts = [
                     "Benchmark Video (sample_road_test.mp4)",
-                    "Upload Video File",
+                    "Upload Video / Record on Mobile (MP4 / Camera)",
                     f"USB Dashcam ({'Cam ' + str(current_cam_idx) if current_src_type == 'usb_camera' else 'Hardware Device'})",
                     "Wireless RTSP / HTTP Stream",
                 ]
@@ -884,8 +884,8 @@ def main():
         custom_vid_path = None
         if "Benchmark Video" in dashcam_src:
             active_src = os.path.join(config.VIDEOS_OUTPUT_DIR, "sample_road_test.mp4")
-        elif "Upload" in dashcam_src:
-            up_vid = st.file_uploader("Upload MP4 / AVI", type=["mp4", "avi"])
+        elif "Upload" in dashcam_src or "Record" in dashcam_src:
+            up_vid = st.file_uploader("Upload or Record Road Video (MP4 / AVI)", type=["mp4", "avi", "mov"])
             if up_vid:
                 os.makedirs("temp", exist_ok=True)
                 custom_vid_path = os.path.join("temp", up_vid.name)
@@ -1066,29 +1066,31 @@ def main():
                 src_choice = st.selectbox(
                     "Image Source",
                     [
-                        "Upload Image (JPG / PNG)",
-                        "Mobile Camera (direct browser snap)",
-                        "Realistic Asphalt Benchmark",
-                        "Synthetic Dataset Sample",
+                        "📱 Mobile Camera (Live Browser Snap)",
+                        "📁 Upload Image (JPG / PNG)",
+                        "🛣️ Realistic Asphalt Benchmark",
+                        "🔬 Synthetic Dataset Sample",
                     ],
                 )
 
                 image_bgr  = None
                 image_name = "road_sample.jpg"
+                run_cam_btn = False
 
-                if "Upload" in src_choice:
+                if "Mobile Camera" in src_choice:
+                    st.info("📱 Point your mobile camera at the pavement defect and tap **Take Photo** below:")
+                    cam_img = st.camera_input("Capture Road Surface", label_visibility="collapsed")
+                    if cam_img:
+                        image_name = "mobile_snap.jpg"
+                        file_bytes = np.asarray(bytearray(cam_img.read()), dtype=np.uint8)
+                        image_bgr  = cv2.imdecode(file_bytes, cv2.IMREAD_COLOR)
+                        run_cam_btn = st.button("🔍  Analyse Captured Surface", type="primary", use_container_width=True, key="btn_mobile_analyse")
+
+                elif "Upload Image" in src_choice:
                     up_file = st.file_uploader("Choose a road surface image", type=["jpg", "jpeg", "png"])
                     if up_file:
                         image_name = up_file.name
                         file_bytes = np.asarray(bytearray(up_file.read()), dtype=np.uint8)
-                        image_bgr  = cv2.imdecode(file_bytes, cv2.IMREAD_COLOR)
-
-                elif "Mobile Camera" in src_choice:
-                    st.info("📱 Open this app on your phone browser and use the camera button below to snap road defects directly.")
-                    cam_img = st.camera_input("Capture Road Surface")
-                    if cam_img:
-                        image_name = "mobile_snap.jpg"
-                        file_bytes = np.asarray(bytearray(cam_img.read()), dtype=np.uint8)
                         image_bgr  = cv2.imdecode(file_bytes, cv2.IMREAD_COLOR)
 
                 elif "Benchmark" in src_choice:
@@ -1119,7 +1121,8 @@ def main():
                 if image_bgr is not None:
                     h, w = image_bgr.shape[:2]
                     st.image(bgr_to_rgb(image_bgr), caption=f"{image_name}  ({w}×{h})", use_container_width=True)
-                    run_img_btn = st.button("🔍  Analyse Surface", type="primary", use_container_width=True)
+                    run_img_btn = st.button("🔍  Analyse Surface", type="primary", use_container_width=True, key="btn_preview_analyse")
+                    run_img_btn = run_img_btn or run_cam_btn
                 else:
                     st.markdown("""
                     <div class="empty-state" style="padding:30px 20px;">
@@ -1757,10 +1760,13 @@ def main():
             projects = auditor.get_all_projects()
 
             if projects:
-                proj_names  = [f"{p['project_code']}: {p['project_name']} — {p['contractor_name']}" for p in projects]
+                proj_names  = [
+                    f"{p.get('project_id', 'PRJ')}: {p.get('highway_name', p.get('project_name', 'Highway Stretch'))} — {p.get('contractor_name', 'Contractor')}"
+                    for p in projects
+                ]
                 sel_proj    = st.selectbox("Select EPC Contract", range(len(projects)), format_func=lambda i: proj_names[i])
                 chosen_proj = projects[sel_proj]
-                audit_res   = auditor.audit_project_stretch(chosen_proj["project_id"])
+                audit_res   = auditor.audit_project_stretch(chosen_proj.get("project_id", ""))
 
                 a1, a2, a3, a4 = st.columns(4)
                 a1.metric("Defects on Stretch", audit_res["total_defects_found"])

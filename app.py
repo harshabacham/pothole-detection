@@ -566,7 +566,7 @@ def _card_cls(cat: str) -> str:
     return "critical" if cat_l == "high" else "elevated" if cat_l == "medium" else "monitored"
 
 
-def render_citizen_queue_view(defects_df: pd.DataFrame):
+def render_citizen_queue_view(defects_df: pd.DataFrame, key_prefix: str = "cq"):
     """Render the Citizen Verification and Approval Queue."""
     st.markdown("""
     <div class="section-header">
@@ -612,7 +612,7 @@ def render_citizen_queue_view(defects_df: pd.DataFrame):
         f"Rejected ({len(disapproved_df)})",
         f"All ({len(defects_df)})",
     ]
-    filter_view = st.radio("Filter Queue", filter_opts, horizontal=True)
+    filter_view = st.radio("Filter Queue", filter_opts, horizontal=True, key=f"{key_prefix}_filter_opts")
 
     if "Pending" in filter_view:
         view_df = pending_df
@@ -694,13 +694,13 @@ def render_citizen_queue_view(defects_df: pd.DataFrame):
                 target_p = st.selectbox(
                     "Authority",
                     list(config.GOV_PORTALS.keys()),
-                    key=f"sel_q_{det_id}",
+                    key=f"{key_prefix}_sel_{det_id}",
                     format_func=lambda k: f"{k}",
                     label_visibility="collapsed",
                 )
                 col_ap, col_dis = st.columns(2)
                 with col_ap:
-                    if st.button("✅ Approve", key=f"ap_q_{det_id}", type="primary", use_container_width=True):
+                    if st.button("✅ Approve", key=f"{key_prefix}_ap_{det_id}", type="primary", use_container_width=True):
                         defect_dict = {
                             "detection_id": det_id,
                             "track_id": row.get("track_id", "TRK_0"),
@@ -728,7 +728,7 @@ def render_citizen_queue_view(defects_df: pd.DataFrame):
                         st.success(f"Filed to {res['target_portal']}")
                         st.rerun()
                 with col_dis:
-                    if st.button("❌ Reject", key=f"dis_q_{det_id}", use_container_width=True):
+                    if st.button("❌ Reject", key=f"{key_prefix}_dis_{det_id}", use_container_width=True):
                         disapprove_defect(det_id, reason="Rejected by citizen — false positive")
                         st.warning("Marked as rejected.")
                         st.rerun()
@@ -739,7 +739,7 @@ def render_citizen_queue_view(defects_df: pd.DataFrame):
                 st.caption(f"Portal: {row.get('dispatched_portal', '—')}")
             elif status.startswith("Disapproved"):
                 st.markdown('<div class="status-rejected">❌ Rejected</div>', unsafe_allow_html=True)
-                if st.button("↩ Revert to Pending", key=f"rev_q_{det_id}", use_container_width=True):
+                if st.button("↩ Revert to Pending", key=f"{key_prefix}_rev_{det_id}", use_container_width=True):
                     update_grievance_status(det_id, status="Pending Review", ref_no="PENDING_REVIEW")
                     st.rerun()
 
@@ -1728,20 +1728,15 @@ def main():
 
         defects_df = get_all_defects()
 
-        gov_tab1, gov_tab2, gov_tab3, gov_tab4, gov_tab5 = st.tabs([
-            "✅  Citizen Queue",
-            "📄  Grievance Portal",
+        gov_tab1, gov_tab2, gov_tab3, gov_tab4 = st.tabs([
+            "📄  Grievance Portal Dossiers",
             "🔧  Work Orders",
             "⚖️  Contractor Audit",
             "📊  PCI Rating",
         ])
 
-        # ── 4a: Citizen Verification Queue ────────────────────────────────
-        # ── 4a: Citizen Verification Queue ────────────────────────────────
+        # ── 4a: Grievance Portal Dossiers ──────────────────────────────────
         with gov_tab1:
-            render_citizen_queue_view(defects_df)
-
-        with gov_tab2:
             st.markdown("""
             <div class="section-header">
                 <div class="section-icon si-blue">📄</div>
@@ -1816,8 +1811,8 @@ def main():
                                     use_container_width=True,
                                 )
 
-        # ── 4c: Work Orders ────────────────────────────────────────────────
-        with gov_tab3:
+        # ── 4b: Work Orders ────────────────────────────────────────────────
+        with gov_tab2:
             st.markdown("""
             <div class="section-header">
                 <div class="section-icon si-amber">🔧</div>
@@ -1868,8 +1863,8 @@ def main():
                     st.success(f"Work Order **{new_wo['work_order_id']}** issued — ₹{new_wo['total_cost_inr']:,}")
                     st.rerun()
 
-        # ── 4d: Contractor Audit ───────────────────────────────────────────
-        with gov_tab4:
+        # ── 4c: Contractor Audit ───────────────────────────────────────────
+        with gov_tab3:
             st.markdown("""
             <div class="section-header">
                 <div class="section-icon si-red">⚖️</div>
@@ -1915,8 +1910,8 @@ def main():
                 </div>
                 """, unsafe_allow_html=True)
 
-        # ── 4e: PCI Rating ─────────────────────────────────────────────────
-        with gov_tab5:
+        # ── 4d: PCI Rating ─────────────────────────────────────────────────
+        with gov_tab4:
             st.markdown("""
             <div class="section-header">
                 <div class="section-icon si-purple">📊</div>

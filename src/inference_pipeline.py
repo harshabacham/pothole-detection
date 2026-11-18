@@ -329,6 +329,38 @@ def run_inference_on_image(
         contours = []
         candidates = []
 
+    # Adaptive Statistical Recovery: If fixed threshold yields 0 candidates,
+    # evaluate local distribution vs pavement baseline (> 1.2 sigma deviation)
+    if len(candidates) == 0 and not predictions_df.empty:
+        score_col = "normalized_anomaly_score" if "normalized_anomaly_score" in predictions_df.columns else "anomaly_score"
+        max_score = float(predictions_df[score_col].max())
+        mean_score = float(predictions_df[score_col].mean())
+        std_score = float(predictions_df[score_col].std()) if len(predictions_df) > 1 else 0.0
+
+        dyn_thresh = max(0.28, mean_score + 1.2 * std_score)
+        if max_score >= dyn_thresh and max_score >= 0.28:
+            high_patches = predictions_df[predictions_df[score_col] >= dyn_thresh]
+            if not high_patches.empty:
+                min_x = int(high_patches["x1"].min())
+                min_y = int(high_patches["y1"].min())
+                max_x = int(high_patches["x2"].max())
+                max_y = int(high_patches["y2"].max())
+                cand_w = max_x - min_x
+                cand_h = max_y - min_y
+                if cand_w * cand_h >= getattr(config, "MIN_CANDIDATE_AREA", 256):
+                    candidates.append({
+                        "image_filename": image_name,
+                        "x": min_x,
+                        "y": min_y,
+                        "width": cand_w,
+                        "height": cand_h,
+                        "pixel_area": cand_w * cand_h,
+                        "box_area": cand_w * cand_h,
+                        "avg_anomaly_score": float(high_patches[score_col].mean()),
+                        "max_anomaly_score": max_score,
+                        "candidate_id": f"{os.path.splitext(image_name)[0]}_cand_01",
+                    })
+
     # 6. Severity & Defect Type Estimation
     evaluated_candidates = []
     for cand in candidates:

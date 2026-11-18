@@ -1887,11 +1887,16 @@ def main():
                 chosen_proj = projects[sel_proj]
                 audit_res   = auditor.audit_project_stretch(chosen_proj.get("project_id", ""))
 
+                defects_found = audit_res.get("total_defects_found", 0)
+                penalty_inr   = audit_res.get("liquidated_penalty_inr", 0)
+                daily_fine    = int(chosen_proj.get("liquidated_damage_per_day_inr", 25000))
+                status_lbl    = audit_res.get("compliance_status", "COMPLIANT").replace("_", " ")
+
                 a1, a2, a3, a4 = st.columns(4)
-                a1.metric("Defects on Stretch", audit_res["total_defects_found"])
-                a2.metric("Contractor Liability", f"₹{audit_res['contractor_liability_inr']:,}")
-                a3.metric("Liquidated Damages", f"₹{audit_res['daily_liquidated_damages_inr']:,}/day")
-                a4.metric("Performance Tier", audit_res["contractor_performance_tier"])
+                a1.metric("Defects on Stretch", defects_found)
+                a2.metric("Contractor Liability", f"₹{penalty_inr:,}")
+                a3.metric("Liquidated Damages", f"₹{daily_fine:,}/day")
+                a4.metric("Compliance Status", status_lbl)
 
                 pdf_audit = auditor.generate_audit_pdf(audit_res)
                 if os.path.exists(pdf_audit):

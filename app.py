@@ -600,12 +600,46 @@ def main():
         )
         internal_feature_mode = "texture_only" if "Fast OpenCV" in feature_mode else feature_mode
 
+        detector_mode = st.selectbox(
+            "Anomaly Detector",
+            ["Standard Isolation Forest", "Extended Isolation Forest (EIF)", "Ensemble (IForest + EIF)"],
+            index=0,
+            help="Standard = axis-aligned splits. Extended (EIF) = random oblique hyperplane cuts.",
+        )
+
+        clustering_mode = st.selectbox(
+            "Spatial Clustering",
+            ["HDBSCAN (Adaptive Density)", "DBSCAN (Fixed Radius)"],
+            index=0,
+            help="HDBSCAN adapts automatically across varying defect densities without a fixed epsilon.",
+        )
+
+        col_adv1, col_adv2 = st.columns(2)
+        with col_adv1:
+            use_pca_recon = st.checkbox("PCA Recon Error", value=True, help="Secondary unsupervised signal: projection MSE from normal manifold.")
+        with col_adv2:
+            auto_night_vision = st.checkbox("Night-Vision Boost", value=True, help="Adaptive illumination for dark/night road scenes.")
+
         st.markdown(f"""
         <div class="sidebar-metric">
-            <div class="sidebar-metric-label">Extractor</div>
-            <div class="sidebar-metric-value" style="font-size:0.82rem;">{feature_mode.split("(")[0].strip()}</div>
+            <div class="sidebar-metric-label">Active Stack</div>
+            <div class="sidebar-metric-value" style="font-size:0.75rem; line-height:1.2;">
+                {feature_mode.split("(")[0].strip()}<br>
+                <span style="color:#38bdf8;">{detector_mode.split("(")[0].strip()}</span> · 
+                <span style="color:#a78bfa;">{clustering_mode.split("(")[0].strip()}</span>
+            </div>
         </div>
         """, unsafe_allow_html=True)
+
+        with st.expander("🎓 Unsupervised ML Viva Guide", expanded=False):
+            st.markdown(r"""
+            **Concepts used in this system:**
+            1. **PCA (16-D)**: Unsupervised dimensionality reduction removing covariance. Residual reconstruction error ($MSE$) acts as an outlier metric.
+            2. **Isolation Forest**: Isolates anomalies in fewer random tree splits ($\bar{h}(x) \ll c(n)$).
+            3. **Extended IForest (EIF)**: Random hyperplane cuts avoiding axis-aligned bias.
+            4. **HDBSCAN**: Density-based hierarchical clustering; assigns label `-1` to candidate road distress noise points without manual $\epsilon$.
+            5. **Texture Analytics**: LBP uniform patterns & GLCM co-occurrence matrix for surface roughness.
+            """)
 
         st.markdown('<div class="sidebar-section-header">Pipeline Stats</div>', unsafe_allow_html=True)
         col_sb1, col_sb2 = st.columns(2)
@@ -1076,11 +1110,14 @@ def main():
                     run_img_btn = False
 
             if image_bgr is not None and run_img_btn:
-                with st.spinner(f"Running {feature_mode} pipeline…"):
+                with st.spinner(f"Running {feature_mode} ({detector_mode}) pipeline…"):
                     results = run_inference_on_image(
                         image_bgr, artifacts,
                         image_name=image_name,
                         feature_mode=internal_feature_mode,
+                        detector_mode=detector_mode,
+                        enable_night_vision=auto_night_vision,
+                        use_pca_recon_error=use_pca_recon,
                     )
 
                 # Persist detections
@@ -1127,6 +1164,19 @@ def main():
                     </div>
                 </div>
                 """, unsafe_allow_html=True)
+
+                # Telemetry badges for unsupervised signals
+                night_badge = ""
+                if r.get("is_night_scene"):
+                    night_badge = f'<span class="badge" style="background:rgba(234,179,8,0.15); color:#facc15; border:1px solid rgba(234,179,8,0.3); padding:4px 8px; border-radius:6px; font-size:0.75rem; margin-right:6px;">🌙 Night-Vision Enhanced (Lum: {r.get("night_luminance")})</span>'
+
+                recon_badge = ""
+                if r.get("mean_pca_recon_error", 0.0) > 0:
+                    recon_badge = f'<span class="badge" style="background:rgba(56,189,248,0.15); color:#38bdf8; border:1px solid rgba(56,189,248,0.3); padding:4px 8px; border-radius:6px; font-size:0.75rem; margin-right:6px;">📐 Mean PCA Recon MSE: {r["mean_pca_recon_error"]:.4f}</span>'
+
+                detector_badge = f'<span class="badge" style="background:rgba(167,139,250,0.15); color:#a78bfa; border:1px solid rgba(167,139,250,0.3); padding:4px 8px; border-radius:6px; font-size:0.75rem;">⚡ {r.get("detector_mode_used", detector_mode)}</span>'
+
+                st.markdown(f'<div style="margin: 10px 0 16px 0;">{night_badge}{recon_badge}{detector_badge}</div>', unsafe_allow_html=True)
 
                 if results["candidate_count"] > 0:
                     st.success(f"✅ Detected {results['candidate_count']} candidate defects — logged to database.")

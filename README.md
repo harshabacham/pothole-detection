@@ -11,10 +11,11 @@ Traditional pothole detection relies on heavily annotated supervised datasets, w
 This project implements an **unsupervised paradigm**:
 1. **Normal Road Manifold Learning**: Learns the statistical distribution of healthy asphalt surface textures.
 2. **Multi-Feature Representation**: Fuses intensity statistics, Uniform Local Binary Patterns (LBP), multi-offset Gray Level Co-occurrence Matrices (GLCM), Sobel gradient energy, Canny edge dynamics, and color channel moments.
-3. **Orthogonal Dimensionality Reduction**: Standardizes features and isolates top principal components explaining >90% variance.
-4. **Isolation Forest Outlier Scoring**: Quantifies structural surface distress using inverted decision scores and normalized anomaly indices.
-5. **Morphological Defect Localization**: Merges contiguous anomalous patches using mathematical morphology and Non-Maximum Suppression (NMS).
-6. **Multi-Factor Visual Severity Estimation**: Evaluates regional area, aspect ratio, edge density, texture irregularity, and photometric contrast relative to surrounding road rings.
+3. **Orthogonal Dimensionality Reduction (PCA)**: Standardizes features and isolates top principal components explaining >90% variance. Residual **PCA Reconstruction Error ($MSE$)** functions as an independent distance metric from the learned normal manifold.
+4. **Isolation Forest & Extended Isolation Forest (EIF)**: Quantifies structural surface distress using inverted decision scores and normalized anomaly indices. EIF leverages random oblique hyperplane cuts to eliminate axis-aligned scoring artifacts.
+5. **Adaptive Spatial Clustering (HDBSCAN & DBSCAN)**: Employs Hierarchical Density-Based Spatial Clustering (HDBSCAN) to adapt across variable defect densities, automatically isolating sparse noise points ($label = -1$) as candidate road defects without manual $\epsilon$ tuning.
+6. **Morphological Defect Localization**: Merges contiguous anomalous patches using mathematical morphology and Non-Maximum Suppression (NMS).
+7. **Multi-Factor Visual Severity Estimation**: Evaluates regional area, aspect ratio, edge density, texture irregularity, and photometric contrast relative to surrounding road rings.
 7. **Temporal Video Tracking & Deduplication**: Prevents repeated database logging of the same defect across video frames.
 8. **Geospatial Reporting & GIS**: Integrates GPS telemetry, SQLite persistence, interactive Folium maps, and GeoJSON export for QGIS and Google Earth Pro.
 9. **Deep Visual Backbones (PyTorch)**: Optional ResNet-18 transfer embeddings and convolutional autoencoders for high-precision asphalt anomaly discovery.

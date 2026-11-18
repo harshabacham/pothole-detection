@@ -1,7 +1,15 @@
 """
 src/dbscan_clustering.py
 ========================
-DBSCAN density-based clustering and noise identification for road patches.
+DBSCAN and HDBSCAN density-based clustering and noise identification for road patches.
+
+Unsupervised algorithms used:
+  - DBSCAN  : Density-Based Spatial Clustering of Applications with Noise.
+              Identifies dense clusters and marks low-density points as noise (-1),
+              which correspond to anomalous road patches.
+  - HDBSCAN : Hierarchical DBSCAN — eliminates the need for a fixed epsilon
+              parameter, adapts cluster density automatically, and is more robust
+              on road datasets where defect density varies across image regions.
 """
 
 import os
@@ -24,6 +32,22 @@ if _PROJECT_ROOT not in sys.path:
     sys.path.insert(0, _PROJECT_ROOT)
 
 import config
+
+
+# ---------------------------------------------------------------------------
+# HDBSCAN support (prefers sklearn.cluster.HDBSCAN, falls back to standalone hdbscan)
+# ---------------------------------------------------------------------------
+try:
+    from sklearn.cluster import HDBSCAN as _HDBSCANCls
+    HDBSCAN_AVAILABLE = True
+except ImportError:
+    try:
+        import hdbscan as _hdbscan_lib
+        _HDBSCANCls = _hdbscan_lib.HDBSCAN
+        HDBSCAN_AVAILABLE = True
+    except ImportError:
+        _HDBSCANCls = None
+        HDBSCAN_AVAILABLE = False
 
 
 def experiment_dbscan(X: np.ndarray, eps_values: list = None, min_samples_values: list = None) -> pd.DataFrame:
@@ -102,6 +126,87 @@ def fit_dbscan(X: np.ndarray, eps: float = 1.5, min_samples: int = 5, model_save
         print(f"[INFO] dbscan: Saved model to {model_save_path}")
 
     return db, labels
+
+
+# ---------------------------------------------------------------------------
+# HDBSCAN — Adaptive Hierarchical Clustering
+# ---------------------------------------------------------------------------
+
+def run_hdbscan_clustering(
+    X: np.ndarray,
+    min_cluster_size: int = 5,
+    min_samples: int = 3,
+    model_save_path: str = None,
+) -> tuple:
+    """
+    Run HDBSCAN (Hierarchical DBSCAN) on a feature matrix.
+
+    Why HDBSCAN over DBSCAN for road anomaly detection:
+    ---------------------------------------------------
+    Standard DBSCAN requires a fixed epsilon (neighbourhood radius) which is
+    difficult to tune when road defect density varies across image patches.
+    HDBSCAN builds a cluster hierarchy from multiple epsilon values and
+    extracts the most stable clusters automatically — no global epsilon needed.
+
+    Points assigned label -1 are classified as noise (candidate anomalies).
+
+    Parameters
+    ----------
+    X : np.ndarray
+        Feature matrix (N x D), typically PCA-reduced features.
+    min_cluster_size : int
+        Minimum number of points required to form a cluster.
+        Smaller values → more sensitive to low-density defects.
+    min_samples : int
+        Controls how conservative the clustering is; higher = more noise.
+    model_save_path : str, optional
+        If provided, persist the fitted HDBSCAN model via joblib.
+
+    Returns
+    -------
+    tuple : (clusterer_or_None, labels)
+        clusterer is None when hdbscan package is unavailable (falls back to DBSCAN).
+    """
+    if not HDBSCAN_AVAILABLE or _HDBSCANCls is None:
+        print("[WARNING] HDBSCAN not available in environment. Falling back to DBSCAN.")
+        _, labels = fit_dbscan(
+            X,
+            eps=config.DBSCAN_DEFAULT_EPS,
+            min_samples=config.DBSCAN_DEFAULT_MIN_SAMPLES,
+        )
+        return None, labels
+
+    try:
+        clusterer = _HDBSCANCls(
+            min_cluster_size=min_cluster_size,
+            min_samples=min_samples,
+            metric="euclidean",
+            cluster_selection_method="eom",
+        )
+        labels = clusterer.fit_predict(X)
+    except Exception as exc:
+        print(f"[WARNING] HDBSCAN failed ({exc}), falling back to standard DBSCAN.")
+        _, labels = fit_dbscan(
+            X,
+            eps=config.DBSCAN_DEFAULT_EPS,
+            min_samples=config.DBSCAN_DEFAULT_MIN_SAMPLES,
+        )
+        return None, labels
+
+    n_clusters = len(set(labels) - {-1})
+    n_noise = int(np.sum(labels == -1))
+    print(f"[INFO] hdbscan: {n_clusters} clusters, {n_noise} noise points "
+          f"({n_noise / max(1, len(X)) * 100:.1f}%)")
+
+    if model_save_path:
+        os.makedirs(os.path.dirname(os.path.abspath(model_save_path)), exist_ok=True)
+        joblib.dump(
+            {"hdbscan": clusterer, "min_cluster_size": min_cluster_size, "min_samples": min_samples},
+            model_save_path,
+        )
+        print(f"[INFO] hdbscan: Saved model to {model_save_path}")
+
+    return clusterer, labels
 
 
 def visualize_dbscan_2d(

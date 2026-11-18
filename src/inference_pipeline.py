@@ -42,6 +42,16 @@ from src.region_grouping import (
 from src.bounding_boxes import extract_candidate_regions
 from src.severity_estimation import estimate_candidate_severity, draw_severity_annotations
 from src.deep_features import DeepFeatureExtractor
+from src.anomaly_detection import (
+    compute_pca_reconstruction_error,
+    combine_anomaly_signals,
+    compute_eif_anomaly_scores,
+)
+from src.night_vision import NightVisionEnhancer
+from src.speed_breaker_classifier import SpeedBreakerDiscriminator
+
+_night_enhancer = NightVisionEnhancer()
+_speed_breaker_clf = SpeedBreakerDiscriminator()
 
 
 def load_all_artifacts(
@@ -97,6 +107,9 @@ def run_inference_on_image(
     patch_size: int = None,
     feature_mode: str = "Deep Features (ResNet-18)",
     return_visualizations: bool = True,
+    enable_night_vision: bool = True,
+    use_pca_recon_error: bool = True,
+    detector_mode: str = "Standard Isolation Forest",
 ) -> dict:
     """
     Execute unsupervised defect analysis on a single image.
@@ -129,12 +142,22 @@ def run_inference_on_image(
     if img_w < patch_size or img_h < patch_size:
         raise ValueError(f"Image dimensions ({img_w}x{img_h}) are smaller than patch size ({patch_size}x{patch_size}).")
 
-    # 1. Preprocessing
+    # 1. Night-Vision Enhancement (from JordanMicahBennett edge-AI concept)
+    #    Automatically brightens dark/night road images before all other processing.
+    is_night = False
+    night_lum = None
+    if enable_night_vision and config.AUTO_NIGHT_VISION:
+        _nve = NightVisionEnhancer()
+        is_night, night_lum = _nve.is_night_scene(image_bgr)
+        if is_night:
+            image_bgr = _nve.enhance_night_frame(image_bgr)
+
+    # 2. Preprocessing
     preproc = preprocess_image(image_bgr, use_clahe=config.USE_CLAHE)
     gray_full = preproc["gray"]
     enhanced_full = preproc["enhanced"]
 
-    # 2. ROI & Patch Extraction
+    # 3. ROI & Patch Extraction
     roi = get_roi_bounds(image_bgr)
     grid_coords = compute_grid(roi["width"], roi["height"], patch_size, overlap=config.PATCH_OVERLAP)
 
@@ -241,6 +264,46 @@ def run_inference_on_image(
         iforest = artifacts["iforest_model"]
         predictions_df = predict_patches(iforest, X_infer, metadata_df=patches_df)
 
+        # Extended Isolation Forest (EIF) / Ensemble Anomaly Scoring
+        if "Extended" in detector_mode or "Ensemble" in detector_mode:
+            try:
+                eif_norm, _ = compute_eif_anomaly_scores(X_infer, ntrees=64, sample_size=128)
+                if "Extended" in detector_mode:
+                    # Pure EIF
+                    predictions_df["normalized_anomaly_score"] = eif_norm
+                    predictions_df["anomaly_score"] = eif_norm * 2.0 - 1.0
+                    predictions_df["is_anomaly"] = (eif_norm >= config.ANOMALY_SCORE_MODERATE).astype(int)
+                elif "Ensemble" in detector_mode:
+                    # Blend IForest + EIF 50/50
+                    if_norm = predictions_df["normalized_anomaly_score"].to_numpy()
+                    blended = 0.50 * if_norm + 0.50 * eif_norm
+                    predictions_df["normalized_anomaly_score"] = blended
+                    predictions_df["anomaly_score"] = blended * 2.0 - 1.0
+                    predictions_df["is_anomaly"] = (blended >= config.ANOMALY_SCORE_MODERATE).astype(int)
+            except Exception as _eif_exc:
+                print(f"[WARNING] EIF scoring failed ({_eif_exc}), using standard IForest.")
+
+        # PCA Reconstruction Error — secondary unsupervised anomaly signal
+        # Anomalous patches lie far from the learned normal manifold in PCA space.
+        if use_pca_recon_error and len(X_infer) > 0:
+            try:
+                # Use scaled features (pre-PCA) for reconstruction
+                scaled_arr = scaled_df[[c for c in feat_cols if c in scaled_df.columns]].to_numpy()
+                recon_errors = compute_pca_reconstruction_error(scaled_arr, pca_model, pca_standardizer=standardizer)
+                iforest_norm = predictions_df["normalized_anomaly_score"].to_numpy()
+                combined = combine_anomaly_signals(iforest_norm, recon_errors, iforest_weight=0.70, recon_weight=0.30)
+                predictions_df["pca_reconstruction_error"] = recon_errors
+                predictions_df["combined_anomaly_score"] = combined
+                # Update normalized score with the combined signal for visualization
+                predictions_df["normalized_anomaly_score"] = combined
+            except Exception as _recon_exc:
+                print(f"[WARNING] PCA reconstruction error computation failed: {_recon_exc}")
+                predictions_df["pca_reconstruction_error"] = 0.0
+                predictions_df["combined_anomaly_score"] = predictions_df["normalized_anomaly_score"]
+        else:
+            predictions_df["pca_reconstruction_error"] = 0.0
+            predictions_df["combined_anomaly_score"] = predictions_df.get("normalized_anomaly_score", 0.0)
+
     n_total_patches = len(predictions_df)
     n_anomalous_patches = int(predictions_df["is_anomaly"].sum())
 
@@ -266,10 +329,20 @@ def run_inference_on_image(
         contours = []
         candidates = []
 
-    # 6. Severity Estimation
+    # 6. Severity & Defect Type Estimation
     evaluated_candidates = []
     for cand in candidates:
         ev = estimate_candidate_severity(cand, gray_full)
+        # Classify candidate: Pothole vs Speed Breaker / Rumble Strip (inspired by edge-AI concepts)
+        try:
+            x, y, w, h = cand.get("bbox", (0, 0, patch_size, patch_size))
+            patch_crop = image_bgr[y : y + h, x : x + w]
+            sb_info = _speed_breaker_clf.classify_defect_patch(patch_crop, (x, y, w, h), frame_width=img_w)
+            ev["classification"] = sb_info.get("classification", "POTHOLE")
+            ev["is_hazard"] = sb_info.get("is_hazard", True)
+        except Exception:
+            ev["classification"] = "POTHOLE"
+            ev["is_hazard"] = True
         evaluated_candidates.append(ev)
 
     severity_bgr = draw_severity_annotations(image_bgr, evaluated_candidates) if return_visualizations else None
@@ -279,6 +352,16 @@ def run_inference_on_image(
     n_low = sum(1 for c in evaluated_candidates if c.get("severity_category") == "Low")
     n_med = sum(1 for c in evaluated_candidates if c.get("severity_category") == "Medium")
     n_high = sum(1 for c in evaluated_candidates if c.get("severity_category") == "High")
+
+    # Compute mean PCA reconstruction error for display
+    mean_recon_err = 0.0
+    if "pca_reconstruction_error" in predictions_df.columns:
+        mean_recon_err = float(predictions_df["pca_reconstruction_error"].mean())
+
+    feature_mode_label = (
+        "Fast OpenCV Texture Engine" if is_texture_only else
+        ("Deep ResNet-18" if use_deep else "Handcrafted LBP+GLCM + PCA + IForest")
+    )
 
     return {
         "original_bgr": image_bgr,
@@ -294,5 +377,9 @@ def run_inference_on_image(
         "high_severity_count": n_high,
         "candidates_df": candidates_df,
         "predictions_df": predictions_df,
-        "feature_mode_used": "Fast OpenCV Texture Engine" if is_texture_only else ("Deep ResNet-18" if use_deep else "Handcrafted LBP+GLCM"),
+        "feature_mode_used": feature_mode_label,
+        "detector_mode_used": detector_mode,
+        "is_night_scene": is_night,
+        "night_luminance": night_lum,
+        "mean_pca_recon_error": mean_recon_err,
     }

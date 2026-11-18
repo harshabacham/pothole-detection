@@ -782,9 +782,14 @@ def main():
 
         detector_mode = st.selectbox(
             "Anomaly Detector",
-            ["Standard Isolation Forest", "Extended Isolation Forest (EIF)", "Ensemble (IForest + EIF)"],
+            [
+                "YOLOv8 Deep Neural (Fast & Accurate)",
+                "Standard Isolation Forest",
+                "Extended Isolation Forest (EIF)",
+                "Ensemble (IForest + EIF)",
+            ],
             index=0,
-            help="Standard = axis-aligned splits. Extended (EIF) = random oblique hyperplane cuts.",
+            help="YOLOv8 = Deep neural pothole detector. IForest/EIF = Unsupervised anomaly detection.",
         )
 
         clustering_mode = st.selectbox(

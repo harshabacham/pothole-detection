@@ -151,7 +151,23 @@ def ensure_models_and_data_ready(verbose: bool = True):
         if verbose:
             print("[AUTO-SETUP] [OK] All unsupervised models successfully calibrated and persisted!")
 
-    # 4. Check benchmark test video
+    # 4. Check YOLOv8 pothole weights
+    yolo_weights = os.path.join("models", "y8best.pt")
+    if not os.path.exists(yolo_weights):
+        if verbose:
+            print("[AUTO-SETUP] Downloading YOLOv8 pothole weights...")
+        try:
+            import urllib.request
+            url = "https://huggingface.co/peterhdd/pothole-detection-yolov8/resolve/main/best.pt"
+            os.makedirs("models", exist_ok=True)
+            urllib.request.urlretrieve(url, yolo_weights)
+            if verbose:
+                print(f"[AUTO-SETUP] [OK] Downloaded {yolo_weights}")
+        except Exception as e:
+            if verbose:
+                print(f"[AUTO-SETUP] Note on YOLO weights: {e}")
+
+    # 5. Check benchmark test video
     sample_vid = os.path.join(config.VIDEOS_OUTPUT_DIR, "sample_road_test.mp4")
     if not os.path.exists(sample_vid):
         if verbose:

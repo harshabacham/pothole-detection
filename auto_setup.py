@@ -158,7 +158,7 @@ def ensure_models_and_data_ready(verbose: bool = True):
             print("[AUTO-SETUP] Downloading YOLOv8 pothole weights...")
         try:
             import urllib.request
-            url = "https://huggingface.co/peterhdd/pothole-detection-yolov8/resolve/main/best.pt"
+            url = "https://huggingface.co/Harisanth/Pothole-Finetuned-YOLOv8/resolve/main/best.pt"
             os.makedirs("models", exist_ok=True)
             urllib.request.urlretrieve(url, yolo_weights)
             if verbose:

@@ -1226,6 +1226,7 @@ def main():
                         auto_dispatch=auto_dispatch,
                         sample_interval=sample_rate,
                         feature_mode=internal_feature_mode,
+                        detector_mode=detector_mode,
                     )
 
                     cap = cv2.VideoCapture(active_src)

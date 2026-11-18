@@ -19,7 +19,7 @@ import config
 
 _YOLO_MODEL = None
 _YOLO_WEIGHTS_PATH = os.path.join(_PROJECT_ROOT, "models", "y8best.pt")
-_HF_WEIGHTS_URL = "https://huggingface.co/peterhdd/pothole-detection-yolov8/resolve/main/best.pt"
+_HF_WEIGHTS_URL = "https://huggingface.co/Harisanth/Pothole-Finetuned-YOLOv8/resolve/main/best.pt"
 
 
 def get_yolo_model(weights_path: str = None):

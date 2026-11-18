@@ -128,6 +128,7 @@ class VehicleDashcamAutoReporter:
         sample_interval: int = 5,
         webhook_url: str = None,
         feature_mode: str = "Deep Features (ResNet-18)",
+        detector_mode: str = "YOLOv8 Deep Neural (Fast & Accurate)",
     ):
         init_database()
         os.makedirs(config.EVIDENCE_OUTPUT_DIR, exist_ok=True)
@@ -146,6 +147,7 @@ class VehicleDashcamAutoReporter:
         self.sample_interval = sample_interval
         self.webhook_url = webhook_url
         self.feature_mode = feature_mode
+        self.detector_mode = detector_mode
         self.db_path = config.DATABASE_PATH
 
         # 3D Depth, Night Vision, and In-Cabin ADAS Audio Agents
@@ -331,6 +333,7 @@ class VehicleDashcamAutoReporter:
             self.artifacts,
             image_name=f"{source_name}_f{frame_idx:05d}.jpg",
             feature_mode=self.feature_mode,
+            detector_mode=self.detector_mode,
             return_visualizations=False,
         )
         raw_candidates = res["candidates_df"].to_dict(orient="records") if not res["candidates_df"].empty else []

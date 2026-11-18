@@ -657,7 +657,8 @@ class VehicleDashcamAutoReporter:
                         ref_no=ref_no,
                         portal=self.target_portal,
                     )
-                    print(f"[RECORDED - REVIEW REQUIRED] Pothole {det_id} at {lat:.5f}, {lon:.5f} saved to DB. Awaiting user approval.")
+                    loc_str = f"{lat:.5f}, {lon:.5f}" if (lat is not None and lon is not None) else "Ungeotagged"
+                    print(f"[RECORDED - REVIEW REQUIRED] Pothole {det_id} at {loc_str} saved to DB. Awaiting user approval.")
                 elif not dedup_decision["should_dispatch"]:
                     # DUPLICATE SUPPRESSED — another citizen already reported this pothole
                     ref_no = dedup_decision.get("reference_no", "EXISTING_GRIEVANCE")
@@ -719,7 +720,7 @@ class VehicleDashcamAutoReporter:
                 except Exception as _c_err:
                     event["whatsapp_url"] = ""
                     event["sms_text"] = ""
-                    event["google_maps_url"] = f"https://maps.google.com/?q={lat},{lon}"
+                    event["google_maps_url"] = f"https://maps.google.com/?q={lat},{lon}" if (lat is not None and lon is not None) else "https://maps.google.com"
 
                 new_events.append(event)
                 self.dispatched_events.append(event)

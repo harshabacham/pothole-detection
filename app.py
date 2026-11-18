@@ -851,12 +851,12 @@ def main():
             cfg_col1, cfg_col2, cfg_col3, cfg_col4 = st.columns(4)
             with cfg_col1:
                 feed_opts = [
-                    f"Auto Dashcam ({'Cam ' + str(current_cam_idx) if current_src_type == 'usb_camera' else 'Phone Stream'})",
                     "Benchmark Video (sample_road_test.mp4)",
                     "Upload Video File",
+                    f"USB Dashcam ({'Cam ' + str(current_cam_idx) if current_src_type == 'usb_camera' else 'Hardware Device'})",
                     "Wireless RTSP / HTTP Stream",
                 ]
-                dashcam_src = st.selectbox("Video Source", feed_opts, label_visibility="visible")
+                dashcam_src = st.selectbox("Video Source", feed_opts, index=0, label_visibility="visible")
             with cfg_col2:
                 portal_keys  = list(config.GOV_PORTALS.keys())
                 target_portal = st.selectbox(
@@ -882,10 +882,8 @@ def main():
         # ── Source resolution ──────────────────────────────────────────────
         active_src     = None
         custom_vid_path = None
-        if dashcam_src.startswith("Auto"):
-            active_src = get_active_dashcam_source()
-        elif "RTSP" in dashcam_src or "Wireless" in dashcam_src:
-            active_src = current_stream_url
+        if "Benchmark Video" in dashcam_src:
+            active_src = os.path.join(config.VIDEOS_OUTPUT_DIR, "sample_road_test.mp4")
         elif "Upload" in dashcam_src:
             up_vid = st.file_uploader("Upload MP4 / AVI", type=["mp4", "avi"])
             if up_vid:
@@ -894,6 +892,10 @@ def main():
                 with open(custom_vid_path, "wb") as fv:
                     fv.write(up_vid.read())
             active_src = custom_vid_path
+        elif "RTSP" in dashcam_src or "Wireless" in dashcam_src:
+            active_src = current_stream_url
+        elif "USB" in dashcam_src or dashcam_src.startswith("Auto"):
+            active_src = current_cam_idx
         else:
             active_src = os.path.join(config.VIDEOS_OUTPUT_DIR, "sample_road_test.mp4")
 
@@ -905,9 +907,15 @@ def main():
             st.caption("Analysis begins immediately on click. The video feed shows detected defects in real-time with bounding boxes and severity annotations.")
 
         if start_btn:
+            # Fall back to sample video if camera or selected file is inaccessible
             if active_src is None or (isinstance(active_src, str) and not str(active_src).startswith("http") and not os.path.exists(str(active_src))):
-                st.error("Invalid video source. Upload a video file or connect a camera first.")
-            else:
+                fallback = os.path.join(config.VIDEOS_OUTPUT_DIR, "sample_road_test.mp4")
+                if os.path.exists(fallback):
+                    active_src = fallback
+                else:
+                    st.error("Invalid video source. Upload a video file or connect a camera first.")
+
+            if active_src is not None:
                 reporter = VehicleDashcamAutoReporter(
                     artifacts=artifacts,
                     target_portal=target_portal,
@@ -922,12 +930,12 @@ def main():
                 if not cap.isOpened():
                     fallback = os.path.join(config.VIDEOS_OUTPUT_DIR, "sample_road_test.mp4")
                     if os.path.exists(fallback):
-                        st.warning(f"Camera unavailable. Falling back to: {os.path.basename(fallback)}")
+                        st.warning(f"Video source unavailable. Falling back to benchmark test video: {os.path.basename(fallback)}")
                         active_src = fallback
                         cap = cv2.VideoCapture(active_src)
 
                 if not cap.isOpened():
-                    st.error(f"Cannot open stream: {active_src}")
+                    st.error(f"Cannot open video source: {active_src}. Please upload an MP4 video or check camera connections.")
                 else:
                     if str(active_src).isdigit() or str(active_src).startswith("http"):
                         cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
@@ -943,14 +951,14 @@ def main():
                         prog_bar = st.progress(0.0)
                     with col_evts:
                         st.markdown("**Detected Incidents**")
-                        evts_box    = st.container()
-                        evts_status = evts_box.caption("Scanning pavement… confirmed defects appear here.")
+                        evts_ph = st.empty()
+                        evts_ph.caption("Scanning pavement… confirmed defects appear here.")
 
                     all_dispatched = []
 
                     while cap.isOpened():
                         ret, frame = cap.read()
-                        if not ret:
+                        if not ret or frame is None or frame.size == 0:
                             break
                         frame_num += 1
                         if frame_num % sample_rate != 0:
@@ -958,21 +966,24 @@ def main():
                         sampled_num += 1
                         t_sec = frame_num / fps
 
-                        frame_r = cv2.resize(frame, (config.IMAGE_WIDTH, config.IMAGE_HEIGHT))
-                        ann_frame, new_events, telem = reporter.process_frame(
-                            frame_bgr=frame_r,
-                            frame_idx=frame_num,
-                            timestamp_sec=t_sec,
-                            source_name="car_dashcam",
-                        )
+                        try:
+                            frame_r = cv2.resize(frame, (config.IMAGE_WIDTH, config.IMAGE_HEIGHT))
+                            ann_frame, new_events, telem = reporter.process_frame(
+                                frame_bgr=frame_r,
+                                frame_idx=frame_num,
+                                timestamp_sec=t_sec,
+                                source_name="car_dashcam",
+                            )
+                        except Exception as frame_err:
+                            print(f"[DASHCAM SURVEY EXCEPTION]: {frame_err}")
+                            continue
 
                         vid_ph.image(bgr_to_rgb(ann_frame), use_container_width=True)
                         prog_bar.progress(min(1.0, sampled_num / 60.0))
 
                         if new_events:
                             all_dispatched.extend(new_events)
-                            evts_status.empty()
-                            with evts_box:
+                            with evts_ph.container():
                                 for ev in reversed(all_dispatched[-4:]):
                                     cat    = ev.get("severity_category", "Medium")
                                     cat_l  = cat.lower()
@@ -998,29 +1009,39 @@ def main():
                                     """, unsafe_allow_html=True)
                                     if ev.get("evidence_image") and os.path.exists(ev["evidence_image"]):
                                         st.image(ev["evidence_image"], use_container_width=True, caption="Photo Evidence")
-                                    link_col1, link_col2 = st.columns(2)
-                                    with link_col1:
-                                        if ev.get("whatsapp_url"):
-                                            st.link_button("Share on WhatsApp", ev["whatsapp_url"], use_container_width=True)
-                                    with link_col2:
-                                        if ev.get("google_maps_url"):
-                                            st.link_button("View on Maps", ev["google_maps_url"], use_container_width=True)
-                                    if ev.get("pdf_dossier") and os.path.exists(ev["pdf_dossier"]):
-                                        with open(ev["pdf_dossier"], "rb") as fpdf:
-                                            st.download_button(
-                                                "Download Grievance PDF",
-                                                fpdf.read(),
-                                                os.path.basename(ev["pdf_dossier"]),
-                                                "application/pdf",
-                                                key=f"dl_{ev['detection_id']}",
-                                                use_container_width=True,
-                                            )
+
+                                    links_html = []
+                                    if ev.get("whatsapp_url"):
+                                        links_html.append(f'<a href="{ev["whatsapp_url"]}" target="_blank" style="display:inline-block; padding:3px 7px; background:#16a34a; color:#fff; border-radius:4px; text-decoration:none; font-size:0.75rem; margin-right:6px;">📲 WhatsApp</a>')
+                                    if ev.get("google_maps_url"):
+                                        links_html.append(f'<a href="{ev["google_maps_url"]}" target="_blank" style="display:inline-block; padding:3px 7px; background:#2563eb; color:#fff; border-radius:4px; text-decoration:none; font-size:0.75rem;">📍 Maps</a>')
+                                    if links_html:
+                                        st.markdown(f'<div style="margin:4px 0 8px 0;">{" ".join(links_html)}</div>', unsafe_allow_html=True)
 
                         if sampled_num >= 60:
                             break
 
                     cap.release()
                     st.success(f"Survey complete — {sampled_num} frames analysed · {len(all_dispatched)} defects logged")
+
+                    if all_dispatched:
+                        with st.expander(f"📋 Verified Defect Action Center ({len(all_dispatched)} incidents)", expanded=True):
+                            for idx, ev in enumerate(all_dispatched):
+                                c_d1, c_d2 = st.columns([2, 1])
+                                with c_d1:
+                                    st.markdown(f"**{ev.get('road_name', 'Highway')}** — Ref: `{ev.get('reference_no', 'N/A')}` · {ev.get('severity_category', 'Medium')} Severity")
+                                    st.caption(f"Depth: {ev.get('max_depth_cm', 0):.1f} cm | Vol: {ev.get('cavity_volume_liters', 0):.1f} L | Fill: {ev.get('asphalt_repair_mass_kg', 0):.1f} kg")
+                                with c_d2:
+                                    if ev.get("pdf_dossier") and os.path.exists(ev["pdf_dossier"]):
+                                        with open(ev["pdf_dossier"], "rb") as fpdf:
+                                            st.download_button(
+                                                "⬇ PDF Dossier",
+                                                fpdf.read(),
+                                                os.path.basename(ev["pdf_dossier"]),
+                                                "application/pdf",
+                                                key=f"post_dl_{idx}_{ev['detection_id']}",
+                                                use_container_width=True,
+                                            )
 
     # =====================================================================
     # TAB 2 — INSPECTION STUDIO

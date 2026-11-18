@@ -566,6 +566,186 @@ def _card_cls(cat: str) -> str:
     return "critical" if cat_l == "high" else "elevated" if cat_l == "medium" else "monitored"
 
 
+def render_citizen_queue_view(defects_df: pd.DataFrame):
+    """Render the Citizen Verification and Approval Queue."""
+    st.markdown("""
+    <div class="section-header">
+        <div class="section-icon si-green">✅</div>
+        <div>
+            <div class="section-title">Citizen Verification & Approval Queue</div>
+            <div class="section-desc">Review defects recorded by camera surveys — approve to file official petitions with government authorities, or reject false alarms</div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    if defects_df.empty:
+        st.markdown("""
+        <div class="empty-state">
+            <div class="empty-state-icon">📋</div>
+            <div class="empty-state-title">No defects recorded yet</div>
+            <div class="empty-state-desc">Use the Live Camera Survey or Inspection Studio to record road defects first.</div>
+        </div>
+        """, unsafe_allow_html=True)
+        return
+
+    status_series    = defects_df["grievance_status"].fillna("Unreported")
+    pending_mask     = status_series.isin(["Pending Review", "Unreported", "PORTAL_SYNC_QUEUED", "PENDING_USER_REVIEW"])
+    dispatched_mask  = status_series.str.startswith("Dispatched", na=False)
+    disapproved_mask = status_series.str.startswith("Disapproved", na=False)
+
+    pending_df     = defects_df[pending_mask]
+    dispatched_df  = defects_df[dispatched_mask]
+    disapproved_df = defects_df[disapproved_mask]
+
+    # Mini KPIs
+    kc1, kc2, kc3, kc4 = st.columns(4)
+    kc1.metric("Total Recorded", len(defects_df))
+    kc2.metric("⏳ Awaiting Review", len(pending_df))
+    kc3.metric("✅ Dispatched", len(dispatched_df))
+    kc4.metric("❌ Rejected", len(disapproved_df))
+
+    st.markdown("<div class='divider'></div>", unsafe_allow_html=True)
+
+    filter_opts = [
+        f"Pending ({len(pending_df)})",
+        f"Dispatched ({len(dispatched_df)})",
+        f"Rejected ({len(disapproved_df)})",
+        f"All ({len(defects_df)})",
+    ]
+    filter_view = st.radio("Filter Queue", filter_opts, horizontal=True)
+
+    if "Pending" in filter_view:
+        view_df = pending_df
+    elif "Dispatched" in filter_view:
+        view_df = dispatched_df
+    elif "Rejected" in filter_view:
+        view_df = disapproved_df
+    else:
+        view_df = defects_df
+
+    if view_df.empty:
+        st.caption("No records in this category.")
+        return
+
+    for _, row in view_df.iterrows():
+        det_id   = row["detection_id"]
+        status   = row.get("grievance_status") or "Pending Review"
+        cat      = row.get("severity_category", "Medium")
+        cat_l    = str(cat).lower()
+        card_cls = _card_cls(cat)
+        chip     = _sev_chip(cat)
+
+        has_bev  = pd.notnull(row.get("bev_area_sqcm"))
+        d_cm     = float(row["bev_area_sqcm"] / 100.0) if has_bev else None
+        vol_l    = round(d_cm * 0.65, 1) if d_cm is not None else None
+
+        has_gps  = "latitude" in row.index and pd.notnull(row.get("latitude")) and pd.notnull(row.get("longitude"))
+        lat_val  = float(row["latitude"])  if has_gps else None
+        lon_val  = float(row["longitude"]) if has_gps else None
+        gps_str  = f"{lat_val:.5f}, {lon_val:.5f}" if has_gps else "Ungeotagged"
+        d_str    = f"{d_cm:.1f} cm" if d_cm is not None else "N/A"
+        v_str    = f"{vol_l:.1f} L"  if vol_l is not None else "N/A"
+        ts_str   = str(row.get("timestamp", "N/A"))[:16]
+        img_path = row.get("image_path")
+
+        col_img, col_info, col_act = st.columns([1, 2, 1.4])
+
+        with col_img:
+            if img_path and os.path.exists(str(img_path)):
+                st.image(str(img_path), use_container_width=True)
+            else:
+                st.markdown(f"""
+                <div style="background:#f9fafb; border:1px dashed #e5e7eb; border-radius:8px; 
+                     padding:28px 10px; text-align:center; color:#9ca3af; font-size:0.72rem;">
+                    📷 Photo Evidence<br/><code style="font-size:0.65rem">{det_id[:20]}</code>
+                </div>
+                """, unsafe_allow_html=True)
+
+        with col_info:
+            st.markdown(f"""
+            <div class="incident-card {card_cls}">
+                <div class="incident-header">
+                    {chip}
+                    <span class="defect-id">{det_id[:30]}</span>
+                </div>
+                <div class="metrics-row">
+                    <div class="metric-cell">
+                        <span class="metric-label">GPS</span>
+                        <span class="metric-value" style="font-size:0.72rem;">{gps_str}</span>
+                    </div>
+                    <div class="metric-cell">
+                        <span class="metric-label">Depth</span>
+                        <span class="metric-value">{d_str}</span>
+                    </div>
+                    <div class="metric-cell">
+                        <span class="metric-label">Volume</span>
+                        <span class="metric-value">{v_str}</span>
+                    </div>
+                    <div class="metric-cell">
+                        <span class="metric-label">Recorded</span>
+                        <span class="metric-value" style="font-size:0.72rem;">{ts_str}</span>
+                    </div>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+
+        with col_act:
+            if status in ["Pending Review", "Unreported", "PORTAL_SYNC_QUEUED", "PENDING_USER_REVIEW"]:
+                target_p = st.selectbox(
+                    "Authority",
+                    list(config.GOV_PORTALS.keys()),
+                    key=f"sel_q_{det_id}",
+                    format_func=lambda k: f"{k}",
+                    label_visibility="collapsed",
+                )
+                col_ap, col_dis = st.columns(2)
+                with col_ap:
+                    if st.button("✅ Approve", key=f"ap_q_{det_id}", type="primary", use_container_width=True):
+                        defect_dict = {
+                            "detection_id": det_id,
+                            "track_id": row.get("track_id", "TRK_0"),
+                            "latitude": lat_val,
+                            "longitude": lon_val,
+                            "severity_category": cat,
+                            "severity_score": float(row.get("severity_score", 0.5)),
+                            "anomaly_score": float(row.get("anomaly_score", -0.2)),
+                            "pixel_area": int(row.get("pixel_area", 4000)),
+                            "image_path": img_path,
+                            "source_media": row.get("source_media", "camera_feed"),
+                            "timestamp": row.get("timestamp"),
+                        }
+                        res = dispatch_grievance_to_portal(defect_dict, portal_key=target_p)
+                        update_grievance_status(
+                            detection_id=det_id,
+                            status="Dispatched",
+                            ref_no=res["reference_number"],
+                            portal=res["target_portal"],
+                        )
+                        CitizenNotifier().notify(
+                            event_dict={**defect_dict, "reference_no": res["reference_number"], "target_portal": res["target_portal"]},
+                            notification_type="GRIEVANCE_FILED",
+                        )
+                        st.success(f"Filed to {res['target_portal']}")
+                        st.rerun()
+                with col_dis:
+                    if st.button("❌ Reject", key=f"dis_q_{det_id}", use_container_width=True):
+                        disapprove_defect(det_id, reason="Rejected by citizen — false positive")
+                        st.warning("Marked as rejected.")
+                        st.rerun()
+
+            elif status.startswith("Dispatched"):
+                st.markdown(f'<div class="status-dispatched">✅ Dispatched</div>', unsafe_allow_html=True)
+                st.caption(f"Ref: {row.get('grievance_ref_no', 'N/A')}")
+                st.caption(f"Portal: {row.get('dispatched_portal', '—')}")
+            elif status.startswith("Disapproved"):
+                st.markdown('<div class="status-rejected">❌ Rejected</div>', unsafe_allow_html=True)
+                if st.button("↩ Revert to Pending", key=f"rev_q_{det_id}", use_container_width=True):
+                    update_grievance_status(det_id, status="Pending Review", ref_no="PENDING_REVIEW")
+                    st.rerun()
+
+        st.markdown("<div class='divider'></div>", unsafe_allow_html=True)
+
+
 def main():
     init_database()
 
@@ -750,298 +930,422 @@ def main():
     </div>
     """, unsafe_allow_html=True)
 
+    status_series = defects_df["grievance_status"].fillna("Unreported") if not defects_df.empty and "grievance_status" in defects_df.columns else pd.Series(dtype=object)
+    pending_count = int(status_series.isin(["Pending Review", "Unreported", "PORTAL_SYNC_QUEUED", "PENDING_USER_REVIEW"]).sum())
+
     # ── Main Tabs ──────────────────────────────────────────────────────────
-    tab_dashcam, tab_inspect, tab_gis, tab_gov = st.tabs([
-        "🎥  Live Dashcam Survey",
+    tab_camera, tab_queue, tab_inspect, tab_gis, tab_gov = st.tabs([
+        "📹  Live Camera & Survey",
+        f"✅  Citizen Review Queue ({pending_count})",
         "🔬  Inspection Studio",
         "🗺️  GIS Map & Database",
-        "🏛️  Municipal Governance",
+        "🏛️  Municipal Governance & SLA",
     ])
 
     # =====================================================================
-    # TAB 1 — LIVE DASHCAM SURVEY
+    # TAB 1 — LIVE CAMERA & ROAD SURVEY
     # =====================================================================
-    with tab_dashcam:
+    with tab_camera:
         st.markdown("""
         <div class="section-header">
-            <div class="section-icon si-blue">🎥</div>
+            <div class="section-icon si-blue">📹</div>
             <div>
-                <div class="section-title">Live Dashcam Survey</div>
-                <div class="section-desc">Real-time road surface monitoring via USB camera, smartphone stream, or video file</div>
+                <div class="section-title">Live Camera & Road Survey</div>
+                <div class="section-desc">Turn on your camera to detect road distress in real-time. Confirmed defects are measured and saved for your approval before filing to government portals.</div>
             </div>
         </div>
         """, unsafe_allow_html=True)
 
-        saved_cam_cfg      = get_saved_camera_config()
-        current_cam_idx    = saved_cam_cfg.get("camera_index", 0)
-        current_src_type   = saved_cam_cfg.get("source_type", "usb_camera")
-        current_stream_url = saved_cam_cfg.get("stream_url", "http://192.168.1.100:8080/video")
-
-        # ── Camera Setup Expander ──────────────────────────────────────────
-        with st.expander("⚙️  Camera & Vehicle Setup", expanded=False):
-            hw_tab1, hw_tab2, hw_tab3 = st.tabs(["USB Dashcam", "Smartphone / RTSP", "Vehicle Profile"])
-
-            with hw_tab1:
-                c_scan, c_status = st.columns([1, 2])
-                with c_scan:
-                    scan_clicked = st.button("🔍  Scan Cameras", use_container_width=True)
-                with c_status:
-                    if current_src_type == "usb_camera":
-                        st.success(f"Active: Camera {current_cam_idx}")
-                    else:
-                        st.info(f"Mode: {current_src_type}")
-
-                if scan_clicked or "scanned_cams" in st.session_state:
-                    if scan_clicked:
-                        with st.spinner("Probing camera hardware…"):
-                            st.session_state["scanned_cams"] = get_available_cameras(max_probe=4)
-                    detected = st.session_state.get("scanned_cams", [])
-                    if not detected:
-                        st.warning("No USB cameras found. Connect a dashcam or use smartphone stream.")
-                    else:
-                        cam_cols = st.columns(min(len(detected), 3))
-                        for i, cam in enumerate(detected):
-                            with cam_cols[i % len(cam_cols)]:
-                                is_sel = cam["index"] == current_cam_idx and current_src_type == "usb_camera"
-                                with st.container(border=True):
-                                    st.markdown(f"**Camera {cam['index']}** · {cam['width']}×{cam['height']}")
-                                    st.image(bgr_to_rgb(cam["preview_bgr"]), use_container_width=True)
-                                    if st.button(
-                                        f"{'✅ ' if is_sel else ''}Set as Dashcam",
-                                        key=f"set_cam_{cam['index']}",
-                                        use_container_width=True,
-                                        type="primary" if is_sel else "secondary",
-                                    ):
-                                        save_camera_config(camera_index=cam["index"], source_type="usb_camera")
-                                        st.success(f"Saved Camera {cam['index']}")
-                                        st.rerun()
-
-            with hw_tab2:
-                st.caption("Mount your smartphone on the windshield and stream via IP Webcam app:")
-                p_url = st.text_input("Stream URL (RTSP / HTTP MJPEG):", value=current_stream_url)
-                if st.button("Save Stream URL", use_container_width=True):
-                    save_camera_config(stream_url=p_url, source_type="phone_stream")
-                    st.success(f"Saved: {p_url}")
-                    st.rerun()
-
-            with hw_tab3:
-                v_prof    = VehicleSuspensionProfiler()
-                curr_spec = v_prof.get_current_spec()
-                v_keys    = list(VEHICLE_PROFILES.keys())
-                col_vp1, col_vp2 = st.columns([2, 1])
-                with col_vp1:
-                    v_choice = st.selectbox(
-                        "Vehicle Class:",
-                        v_keys,
-                        index=v_keys.index(curr_spec["profile_key"]) if curr_spec["profile_key"] in v_keys else 0,
-                        format_func=lambda k: VEHICLE_PROFILES[k]["display_name"],
-                    )
-                    chosen_spec = VEHICLE_PROFILES[v_choice]
-                    if st.button("Save Vehicle Profile", use_container_width=True):
-                        v_prof.save_profile(v_choice)
-                        st.success(f"Saved: {chosen_spec['display_name']}")
-                        st.rerun()
-                with col_vp2:
-                    st.metric("Ground Clearance", f"{chosen_spec['ground_clearance_mm']} mm")
-                    st.metric("G-Shock Threshold", f"{chosen_spec['shock_threshold_g']:.2f} g")
-
-        # ── Survey Configuration ───────────────────────────────────────────
-        with st.container(border=True):
-            st.markdown("**Survey Configuration**")
-            cfg_col1, cfg_col2, cfg_col3, cfg_col4 = st.columns(4)
-            with cfg_col1:
-                feed_opts = [
-                    "Benchmark Video (sample_road_test.mp4)",
-                    "Upload Video / Record on Mobile (MP4 / Camera)",
-                    f"USB Dashcam ({'Cam ' + str(current_cam_idx) if current_src_type == 'usb_camera' else 'Hardware Device'})",
-                    "Wireless RTSP / HTTP Stream",
-                ]
-                dashcam_src = st.selectbox("Video Source", feed_opts, index=0, label_visibility="visible")
-            with cfg_col2:
-                portal_keys  = list(config.GOV_PORTALS.keys())
-                target_portal = st.selectbox(
-                    "Target Authority",
-                    portal_keys,
-                    format_func=lambda k: f"{k}",
-                )
-            with cfg_col3:
-                min_sev = st.selectbox("Min Severity", ["Medium", "High", "Low"])
-            with cfg_col4:
-                sample_rate = st.selectbox("Frame Stride", [2, 5, 10], index=1, format_func=lambda s: f"1 in {s} frames")
-
-        dispatch_policy = st.radio(
-            "Submission Policy",
+        cam_mode = st.radio(
+            "Survey Detection Source",
             [
-                "📋  Record & Review — Save all detections; approve or reject before submitting",
-                "⚡  Auto-Dispatch — Immediately submit confirmed hazards to government portal",
+                "📱  Live Camera (Phone / Browser WebCam)",
+                "🎬  Continuous Video Survey (Benchmark / Dashcam File)",
             ],
             horizontal=True,
         )
-        auto_dispatch = "Auto-Dispatch" in dispatch_policy
 
-        # ── Source resolution ──────────────────────────────────────────────
-        active_src     = None
-        custom_vid_path = None
-        if "Benchmark Video" in dashcam_src:
-            active_src = os.path.join(config.VIDEOS_OUTPUT_DIR, "sample_road_test.mp4")
-        elif "Upload" in dashcam_src or "Record" in dashcam_src:
-            up_vid = st.file_uploader("Upload or Record Road Video (MP4 / AVI)", type=["mp4", "avi", "mov"])
-            if up_vid:
-                os.makedirs("temp", exist_ok=True)
-                custom_vid_path = os.path.join("temp", up_vid.name)
-                with open(custom_vid_path, "wb") as fv:
-                    fv.write(up_vid.read())
-            active_src = custom_vid_path
-        elif "RTSP" in dashcam_src or "Wireless" in dashcam_src:
-            active_src = current_stream_url
-        elif "USB" in dashcam_src or dashcam_src.startswith("Auto"):
-            active_src = current_cam_idx
+        if "Live Camera" in cam_mode:
+            st.info("📱 **Live Camera Detection**: Turn on your camera below and point it at the road surface. Tap **Capture** to take photos of potholes or pavement defects. The AI detects the pothole in real-time, estimates severity & 3D depth, and automatically saves it for citizen approval before filing.")
+
+            cam_shot = st.camera_input("Point camera at road defect / surface", label_visibility="visible")
+
+            if cam_shot is not None:
+                file_bytes = np.asarray(bytearray(cam_shot.read()), dtype=np.uint8)
+                shot_bgr   = cv2.imdecode(file_bytes, cv2.IMREAD_COLOR)
+
+                if shot_bgr is not None:
+                    with st.spinner("Analyzing road surface with unsupervised ML engine…"):
+                        timestamp_now = datetime.now().strftime("%Y%m%d_%H%M%S")
+                        img_filename = f"camera_snap_{timestamp_now}.jpg"
+                        res = run_inference_on_image(
+                            shot_bgr, artifacts,
+                            image_name=img_filename,
+                            feature_mode=internal_feature_mode,
+                            detector_mode=detector_mode,
+                            enable_night_vision=auto_night_vision,
+                            use_pca_recon_error=use_pca_recon,
+                        )
+
+                    annotated = res.get("severity_bgr") if res.get("severity_bgr") is not None else shot_bgr
+                    cand_df = res.get("candidates_df")
+                    n_cands = len(cand_df) if cand_df is not None and not cand_df.empty else 0
+
+                    os.makedirs("outputs/evidence", exist_ok=True)
+                    ev_path = os.path.join("outputs/evidence", img_filename)
+                    cv2.imwrite(ev_path, annotated)
+
+                    # Persist detections into database as Pending Review
+                    if n_cands > 0:
+                        for idx, r in cand_df.iterrows():
+                            d_id = f"CAM_{timestamp_now}_{r.get('candidate_id', idx)}"
+                            insert_defect(
+                                detection_id=d_id,
+                                track_id=str(r.get("candidate_id", idx)),
+                                latitude=None, longitude=None,
+                                severity_category=r.get("severity_category", "Medium"),
+                                severity_score=float(r.get("severity_score", 0.5)),
+                                anomaly_score=float(r.get("avg_anomaly_score", -0.2)),
+                                pixel_area=int(r.get("pixel_area", 4000)),
+                                image_path=ev_path,
+                                source_media="Live Browser Camera",
+                            )
+
+                    # View detection
+                    c_view1, c_view2 = st.columns([1.3, 1])
+                    with c_view1:
+                        st.image(bgr_to_rgb(annotated), caption=f"Detection View ({n_cands} defects found)", use_container_width=True)
+                    with c_view2:
+                        if n_cands > 0:
+                            st.success(f"🚨 **{n_cands} Road Defect(s) Detected & Saved!**")
+                            st.markdown(f"""
+                            - **Status**: ⏳ Saved to **Citizen Review Queue** (`Pending Review`)
+                            - **Severity**: {res.get('high_severity_count', 0)} High · {res.get('medium_severity_count', 0)} Medium · {res.get('low_severity_count', 0)} Low
+                            - **Action**: Approve below to file directly to government authorities, or reject if false alarm.
+                            """)
+                            st.markdown("---")
+                            auth_choice = st.selectbox(
+                                "Target Authority",
+                                list(config.GOV_PORTALS.keys()),
+                                key=f"quick_portal_{timestamp_now}",
+                                format_func=lambda k: f"{k}: {config.GOV_PORTALS[k]['name']}",
+                            )
+                            b_app, b_rej = st.columns(2)
+                            with b_app:
+                                if st.button("✅ Approve & File", type="primary", use_container_width=True, key=f"btn_cam_ap_{timestamp_now}"):
+                                    top_r = cand_df.iloc[0]
+                                    top_id = f"CAM_{timestamp_now}_{top_r.get('candidate_id', 0)}"
+                                    d_payload = {
+                                        "detection_id": top_id,
+                                        "latitude": None, "longitude": None,
+                                        "severity_category": top_r.get("severity_category", "Medium"),
+                                        "severity_score": float(top_r.get("severity_score", 0.5)),
+                                        "anomaly_score": float(top_r.get("avg_anomaly_score", -0.2)),
+                                        "pixel_area": int(top_r.get("pixel_area", 4000)),
+                                        "image_path": ev_path,
+                                        "source_media": "Live Browser Camera",
+                                    }
+                                    d_res = dispatch_grievance_to_portal(d_payload, portal_key=auth_choice)
+                                    update_grievance_status(
+                                        detection_id=top_id,
+                                        status="Dispatched",
+                                        ref_no=d_res["reference_number"],
+                                        portal=d_res["target_portal"],
+                                    )
+                                    CitizenNotifier().notify(
+                                        event_dict={**d_payload, "reference_no": d_res["reference_number"], "target_portal": d_res["target_portal"]},
+                                        notification_type="GRIEVANCE_FILED",
+                                    )
+                                    st.success(f"✅ Filed to {d_res['target_portal']}! Ref: {d_res['reference_number']}")
+                                    st.rerun()
+                            with b_rej:
+                                if st.button("❌ Reject", use_container_width=True, key=f"btn_cam_rej_{timestamp_now}"):
+                                    for idx, r in cand_df.iterrows():
+                                        d_id = f"CAM_{timestamp_now}_{r.get('candidate_id', idx)}"
+                                        disapprove_defect(d_id, reason="Rejected by citizen camera review")
+                                    st.warning("Marked as rejected.")
+                                    st.rerun()
+                        else:
+                            st.info("✅ Pavement surface is clear. No structural cavities detected.")
+
         else:
-            active_src = os.path.join(config.VIDEOS_OUTPUT_DIR, "sample_road_test.mp4")
+            saved_cam_cfg      = get_saved_camera_config()
+            current_cam_idx    = saved_cam_cfg.get("camera_index", 0)
+            current_src_type   = saved_cam_cfg.get("source_type", "usb_camera")
+            current_stream_url = saved_cam_cfg.get("stream_url", "http://192.168.1.100:8080/video")
 
-        # ── Start button ───────────────────────────────────────────────────
-        col_start, col_hint = st.columns([1, 3])
-        with col_start:
-            start_btn = st.button("▶  Start Road Survey", type="primary", use_container_width=True)
-        with col_hint:
-            st.caption("Analysis begins immediately on click. The video feed shows detected defects in real-time with bounding boxes and severity annotations.")
+            # ── Camera Setup Expander ──────────────────────────────────────────
+            with st.expander("⚙️  Camera & Vehicle Setup", expanded=False):
+                hw_tab1, hw_tab2, hw_tab3 = st.tabs(["USB Dashcam", "Smartphone / RTSP", "Vehicle Profile"])
 
-        if start_btn:
-            # Fall back to sample video if camera or selected file is inaccessible
-            if active_src is None or (isinstance(active_src, str) and not str(active_src).startswith("http") and not os.path.exists(str(active_src))):
-                fallback = os.path.join(config.VIDEOS_OUTPUT_DIR, "sample_road_test.mp4")
-                if os.path.exists(fallback):
-                    active_src = fallback
-                else:
-                    st.error("Invalid video source. Upload a video file or connect a camera first.")
+                with hw_tab1:
+                    c_scan, c_status = st.columns([1, 2])
+                    with c_scan:
+                        scan_clicked = st.button("🔍  Scan Cameras", use_container_width=True)
+                    with c_status:
+                        if current_src_type == "usb_camera":
+                            st.success(f"Active: Camera {current_cam_idx}")
+                        else:
+                            st.info(f"Mode: {current_src_type}")
 
-            if active_src is not None:
-                reporter = VehicleDashcamAutoReporter(
-                    artifacts=artifacts,
-                    target_portal=target_portal,
-                    min_severity=min_sev,
-                    confirmation_frames=2,
-                    auto_dispatch=auto_dispatch,
-                    sample_interval=sample_rate,
-                    feature_mode=internal_feature_mode,
-                )
+                    if scan_clicked or "scanned_cams" in st.session_state:
+                        if scan_clicked:
+                            with st.spinner("Probing camera hardware…"):
+                                st.session_state["scanned_cams"] = get_available_cameras(max_probe=4)
+                        detected = st.session_state.get("scanned_cams", [])
+                        if not detected:
+                            st.warning("No USB cameras found. Connect a dashcam or use smartphone stream.")
+                        else:
+                            cam_cols = st.columns(min(len(detected), 3))
+                            for i, cam in enumerate(detected):
+                                with cam_cols[i % len(cam_cols)]:
+                                    is_sel = cam["index"] == current_cam_idx and current_src_type == "usb_camera"
+                                    with st.container(border=True):
+                                        st.markdown(f"**Camera {cam['index']}** · {cam['width']}×{cam['height']}")
+                                        st.image(bgr_to_rgb(cam["preview_bgr"]), use_container_width=True)
+                                        if st.button(
+                                            f"{'✅ ' if is_sel else ''}Set as Dashcam",
+                                            key=f"set_cam_{cam['index']}",
+                                            use_container_width=True,
+                                            type="primary" if is_sel else "secondary",
+                                        ):
+                                            save_camera_config(camera_index=cam["index"], source_type="usb_camera")
+                                            st.success(f"Saved Camera {cam['index']}")
+                                            st.rerun()
 
-                cap = cv2.VideoCapture(active_src)
-                if not cap.isOpened():
+                with hw_tab2:
+                    st.caption("Mount your smartphone on the windshield and stream via IP Webcam app:")
+                    p_url = st.text_input("Stream URL (RTSP / HTTP MJPEG):", value=current_stream_url)
+                    if st.button("Save Stream URL", use_container_width=True):
+                        save_camera_config(stream_url=p_url, source_type="phone_stream")
+                        st.success(f"Saved: {p_url}")
+                        st.rerun()
+
+                with hw_tab3:
+                    v_prof    = VehicleSuspensionProfiler()
+                    curr_spec = v_prof.get_current_spec()
+                    v_keys    = list(VEHICLE_PROFILES.keys())
+                    col_vp1, col_vp2 = st.columns([2, 1])
+                    with col_vp1:
+                        v_choice = st.selectbox(
+                            "Vehicle Class:",
+                            v_keys,
+                            index=v_keys.index(curr_spec["profile_key"]) if curr_spec["profile_key"] in v_keys else 0,
+                            format_func=lambda k: VEHICLE_PROFILES[k]["display_name"],
+                        )
+                        chosen_spec = VEHICLE_PROFILES[v_choice]
+                        if st.button("Save Vehicle Profile", use_container_width=True):
+                            v_prof.save_profile(v_choice)
+                            st.success(f"Saved: {chosen_spec['display_name']}")
+                            st.rerun()
+                    with col_vp2:
+                        st.metric("Ground Clearance", f"{chosen_spec['ground_clearance_mm']} mm")
+                        st.metric("G-Shock Threshold", f"{chosen_spec['shock_threshold_g']:.2f} g")
+
+            # ── Survey Configuration ───────────────────────────────────────────
+            with st.container(border=True):
+                st.markdown("**Survey Configuration**")
+                cfg_col1, cfg_col2, cfg_col3, cfg_col4 = st.columns(4)
+                with cfg_col1:
+                    feed_opts = [
+                        "Benchmark Video (sample_road_test.mp4)",
+                        "Upload Video / Record on Mobile (MP4 / Camera)",
+                        f"USB Dashcam ({'Cam ' + str(current_cam_idx) if current_src_type == 'usb_camera' else 'Hardware Device'})",
+                        "Wireless RTSP / HTTP Stream",
+                    ]
+                    dashcam_src = st.selectbox("Video Source", feed_opts, index=0, label_visibility="visible")
+                with cfg_col2:
+                    portal_keys  = list(config.GOV_PORTALS.keys())
+                    target_portal = st.selectbox(
+                        "Target Authority",
+                        portal_keys,
+                        format_func=lambda k: f"{k}",
+                    )
+                with cfg_col3:
+                    min_sev = st.selectbox("Min Severity", ["Medium", "High", "Low"])
+                with cfg_col4:
+                    sample_rate = st.selectbox("Frame Stride", [2, 5, 10], index=1, format_func=lambda s: f"1 in {s} frames")
+
+            dispatch_policy = st.radio(
+                "Submission Policy",
+                [
+                    "📋  Record & Review — Save all detections; approve or reject before submitting",
+                    "⚡  Auto-Dispatch — Immediately submit confirmed hazards to government portal",
+                ],
+                horizontal=True,
+            )
+            auto_dispatch = "Auto-Dispatch" in dispatch_policy
+
+            # ── Source resolution ──────────────────────────────────────────────
+            active_src     = None
+            custom_vid_path = None
+            if "Benchmark Video" in dashcam_src:
+                active_src = os.path.join(config.VIDEOS_OUTPUT_DIR, "sample_road_test.mp4")
+            elif "Upload" in dashcam_src or "Record" in dashcam_src:
+                up_vid = st.file_uploader("Upload or Record Road Video (MP4 / AVI)", type=["mp4", "avi", "mov"])
+                if up_vid:
+                    os.makedirs("temp", exist_ok=True)
+                    custom_vid_path = os.path.join("temp", up_vid.name)
+                    with open(custom_vid_path, "wb") as fv:
+                        fv.write(up_vid.read())
+                active_src = custom_vid_path
+            elif "RTSP" in dashcam_src or "Wireless" in dashcam_src:
+                active_src = current_stream_url
+            elif "USB" in dashcam_src or dashcam_src.startswith("Auto"):
+                active_src = current_cam_idx
+            else:
+                active_src = os.path.join(config.VIDEOS_OUTPUT_DIR, "sample_road_test.mp4")
+
+            # ── Start button ───────────────────────────────────────────────────
+            col_start, col_hint = st.columns([1, 3])
+            with col_start:
+                start_btn = st.button("▶  Start Road Survey", type="primary", use_container_width=True)
+            with col_hint:
+                st.caption("Analysis begins immediately on click. The video feed shows detected defects in real-time with bounding boxes and severity annotations.")
+
+            if start_btn:
+                # Fall back to sample video if camera or selected file is inaccessible
+                if active_src is None or (isinstance(active_src, str) and not str(active_src).startswith("http") and not os.path.exists(str(active_src))):
                     fallback = os.path.join(config.VIDEOS_OUTPUT_DIR, "sample_road_test.mp4")
                     if os.path.exists(fallback):
-                        st.warning(f"Video source unavailable. Falling back to benchmark test video: {os.path.basename(fallback)}")
                         active_src = fallback
-                        cap = cv2.VideoCapture(active_src)
+                    else:
+                        st.error("Invalid video source. Upload a video file or connect a camera first.")
 
-                if not cap.isOpened():
-                    st.error(f"Cannot open video source: {active_src}. Please upload an MP4 video or check camera connections.")
-                else:
-                    if str(active_src).isdigit() or str(active_src).startswith("http"):
-                        cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
+                if active_src is not None:
+                    reporter = VehicleDashcamAutoReporter(
+                        artifacts=artifacts,
+                        target_portal=target_portal,
+                        min_severity=min_sev,
+                        confirmation_frames=2,
+                        auto_dispatch=auto_dispatch,
+                        sample_interval=sample_rate,
+                        feature_mode=internal_feature_mode,
+                    )
 
-                    fps         = cap.get(cv2.CAP_PROP_FPS) or 25.0
-                    frame_num   = 0
-                    sampled_num = 0
+                    cap = cv2.VideoCapture(active_src)
+                    if not cap.isOpened():
+                        fallback = os.path.join(config.VIDEOS_OUTPUT_DIR, "sample_road_test.mp4")
+                        if os.path.exists(fallback):
+                            st.warning(f"Video source unavailable. Falling back to benchmark test video: {os.path.basename(fallback)}")
+                            active_src = fallback
+                            cap = cv2.VideoCapture(active_src)
 
-                    col_vid, col_evts = st.columns([1.4, 1.0])
-                    with col_vid:
-                        st.markdown("**Detection Feed**")
-                        vid_ph   = st.empty()
-                        prog_bar = st.progress(0.0)
-                    with col_evts:
-                        st.markdown("**Detected Incidents**")
-                        evts_ph = st.empty()
-                        evts_ph.caption("Scanning pavement… confirmed defects appear here.")
+                    if not cap.isOpened():
+                        st.error(f"Cannot open video source: {active_src}. Please upload an MP4 video or check camera connections.")
+                    else:
+                        if str(active_src).isdigit() or str(active_src).startswith("http"):
+                            cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
 
-                    all_dispatched = []
+                        fps         = cap.get(cv2.CAP_PROP_FPS) or 25.0
+                        frame_num   = 0
+                        sampled_num = 0
 
-                    while cap.isOpened():
-                        ret, frame = cap.read()
-                        if not ret or frame is None or frame.size == 0:
-                            break
-                        frame_num += 1
-                        if frame_num % sample_rate != 0:
-                            continue
-                        sampled_num += 1
-                        t_sec = frame_num / fps
+                        col_vid, col_evts = st.columns([1.4, 1.0])
+                        with col_vid:
+                            st.markdown("**Detection Feed**")
+                            vid_ph   = st.empty()
+                            prog_bar = st.progress(0.0)
+                        with col_evts:
+                            st.markdown("**Detected Incidents**")
+                            evts_ph = st.empty()
+                            evts_ph.caption("Scanning pavement… confirmed defects appear here.")
 
-                        try:
-                            frame_r = cv2.resize(frame, (config.IMAGE_WIDTH, config.IMAGE_HEIGHT))
-                            ann_frame, new_events, telem = reporter.process_frame(
-                                frame_bgr=frame_r,
-                                frame_idx=frame_num,
-                                timestamp_sec=t_sec,
-                                source_name="car_dashcam",
-                            )
-                        except Exception as frame_err:
-                            print(f"[DASHCAM SURVEY EXCEPTION]: {frame_err}")
-                            continue
+                        all_dispatched = []
 
-                        vid_ph.image(bgr_to_rgb(ann_frame), use_container_width=True)
-                        prog_bar.progress(min(1.0, sampled_num / 60.0))
+                        while cap.isOpened():
+                            ret, frame = cap.read()
+                            if not ret or frame is None or frame.size == 0:
+                                break
+                            frame_num += 1
+                            if frame_num % sample_rate != 0:
+                                continue
+                            sampled_num += 1
+                            t_sec = frame_num / fps
 
-                        if new_events:
-                            all_dispatched.extend(new_events)
-                            with evts_ph.container():
-                                for ev in reversed(all_dispatched[-4:]):
-                                    cat    = ev.get("severity_category", "Medium")
-                                    cat_l  = cat.lower()
-                                    t_cls  = f"t-{cat_l}"
-                                    d_cm   = ev.get("max_depth_cm", 0)
-                                    vol_l  = ev.get("cavity_volume_liters", 0)
-                                    mass   = ev.get("asphalt_repair_mass_kg", 0)
-                                    road   = ev.get("road_name", "Survey Route")
-                                    ref    = ev.get("reference_no", "PENDING")
-                                    st.markdown(f"""
-                                    <div class="ticket {t_cls}">
-                                        <div class="ticket-header">
-                                            <span class="ticket-road">{road}</span>
-                                            <span class="ticket-ref">{ref}</span>
+                            try:
+                                frame_r = cv2.resize(frame, (config.IMAGE_WIDTH, config.IMAGE_HEIGHT))
+                                ann_frame, new_events, telem = reporter.process_frame(
+                                    frame_bgr=frame_r,
+                                    frame_idx=frame_num,
+                                    timestamp_sec=t_sec,
+                                    source_name="car_dashcam",
+                                )
+                            except Exception as frame_err:
+                                print(f"[DASHCAM SURVEY EXCEPTION]: {frame_err}")
+                                continue
+
+                            vid_ph.image(bgr_to_rgb(ann_frame), use_container_width=True)
+                            prog_bar.progress(min(1.0, sampled_num / 60.0))
+
+                            if new_events:
+                                all_dispatched.extend(new_events)
+                                with evts_ph.container():
+                                    for ev in reversed(all_dispatched[-4:]):
+                                        cat    = ev.get("severity_category", "Medium")
+                                        cat_l  = cat.lower()
+                                        t_cls  = f"t-{cat_l}"
+                                        d_cm   = ev.get("max_depth_cm", 0)
+                                        vol_l  = ev.get("cavity_volume_liters", 0)
+                                        mass   = ev.get("asphalt_repair_mass_kg", 0)
+                                        road   = ev.get("road_name", "Survey Route")
+                                        ref    = ev.get("reference_no", "PENDING")
+                                        st.markdown(f"""
+                                        <div class="ticket {t_cls}">
+                                            <div class="ticket-header">
+                                                <span class="ticket-road">{road}</span>
+                                                <span class="ticket-ref">{ref}</span>
+                                            </div>
+                                            {_sev_chip(cat)}
+                                            <div class="ticket-stats" style="margin-top:6px;">
+                                                <span class="ticket-stat">Depth <span>{d_cm:.1f} cm</span></span>
+                                                <span class="ticket-stat">Vol <span>{vol_l:.1f} L</span></span>
+                                                <span class="ticket-stat">Fill <span>{mass:.1f} kg</span></span>
+                                            </div>
                                         </div>
-                                        {_sev_chip(cat)}
-                                        <div class="ticket-stats" style="margin-top:6px;">
-                                            <span class="ticket-stat">Depth <span>{d_cm:.1f} cm</span></span>
-                                            <span class="ticket-stat">Vol <span>{vol_l:.1f} L</span></span>
-                                            <span class="ticket-stat">Fill <span>{mass:.1f} kg</span></span>
-                                        </div>
-                                    </div>
-                                    """, unsafe_allow_html=True)
-                                    if ev.get("evidence_image") and os.path.exists(ev["evidence_image"]):
-                                        st.image(ev["evidence_image"], use_container_width=True, caption="Photo Evidence")
+                                        """, unsafe_allow_html=True)
+                                        if ev.get("evidence_image") and os.path.exists(ev["evidence_image"]):
+                                            st.image(ev["evidence_image"], use_container_width=True, caption="Photo Evidence")
 
-                                    links_html = []
-                                    if ev.get("whatsapp_url"):
-                                        links_html.append(f'<a href="{ev["whatsapp_url"]}" target="_blank" style="display:inline-block; padding:3px 7px; background:#16a34a; color:#fff; border-radius:4px; text-decoration:none; font-size:0.75rem; margin-right:6px;">📲 WhatsApp</a>')
-                                    if ev.get("google_maps_url"):
-                                        links_html.append(f'<a href="{ev["google_maps_url"]}" target="_blank" style="display:inline-block; padding:3px 7px; background:#2563eb; color:#fff; border-radius:4px; text-decoration:none; font-size:0.75rem;">📍 Maps</a>')
-                                    if links_html:
-                                        st.markdown(f'<div style="margin:4px 0 8px 0;">{" ".join(links_html)}</div>', unsafe_allow_html=True)
+                                        links_html = []
+                                        if ev.get("whatsapp_url"):
+                                            links_html.append(f'<a href="{ev["whatsapp_url"]}" target="_blank" style="display:inline-block; padding:3px 7px; background:#16a34a; color:#fff; border-radius:4px; text-decoration:none; font-size:0.75rem; margin-right:6px;">📲 WhatsApp</a>')
+                                        if ev.get("google_maps_url"):
+                                            links_html.append(f'<a href="{ev["google_maps_url"]}" target="_blank" style="display:inline-block; padding:3px 7px; background:#2563eb; color:#fff; border-radius:4px; text-decoration:none; font-size:0.75rem;">📍 Maps</a>')
+                                        if links_html:
+                                            st.markdown(f'<div style="margin:4px 0 8px 0;">{" ".join(links_html)}</div>', unsafe_allow_html=True)
 
-                        if sampled_num >= 60:
-                            break
+                            if sampled_num >= 60:
+                                break
 
-                    cap.release()
-                    st.success(f"Survey complete — {sampled_num} frames analysed · {len(all_dispatched)} defects logged")
+                        cap.release()
+                        st.success(f"Survey complete — {sampled_num} frames analysed · {len(all_dispatched)} defects logged")
 
-                    if all_dispatched:
-                        with st.expander(f"📋 Verified Defect Action Center ({len(all_dispatched)} incidents)", expanded=True):
-                            for idx, ev in enumerate(all_dispatched):
-                                c_d1, c_d2 = st.columns([2, 1])
-                                with c_d1:
-                                    st.markdown(f"**{ev.get('road_name', 'Highway')}** — Ref: `{ev.get('reference_no', 'N/A')}` · {ev.get('severity_category', 'Medium')} Severity")
-                                    st.caption(f"Depth: {ev.get('max_depth_cm', 0):.1f} cm | Vol: {ev.get('cavity_volume_liters', 0):.1f} L | Fill: {ev.get('asphalt_repair_mass_kg', 0):.1f} kg")
-                                with c_d2:
-                                    if ev.get("pdf_dossier") and os.path.exists(ev["pdf_dossier"]):
-                                        with open(ev["pdf_dossier"], "rb") as fpdf:
-                                            st.download_button(
-                                                "⬇ PDF Dossier",
-                                                fpdf.read(),
-                                                os.path.basename(ev["pdf_dossier"]),
-                                                "application/pdf",
-                                                key=f"post_dl_{idx}_{ev['detection_id']}",
-                                                use_container_width=True,
-                                            )
+                        if all_dispatched:
+                            with st.expander(f"📋 Verified Defect Action Center ({len(all_dispatched)} incidents)", expanded=True):
+                                for idx, ev in enumerate(all_dispatched):
+                                    c_d1, c_d2 = st.columns([2, 1])
+                                    with c_d1:
+                                        st.markdown(f"**{ev.get('road_name', 'Highway')}** — Ref: `{ev.get('reference_no', 'N/A')}` · {ev.get('severity_category', 'Medium')} Severity")
+                                        st.caption(f"Depth: {ev.get('max_depth_cm', 0):.1f} cm | Vol: {ev.get('cavity_volume_liters', 0):.1f} L | Fill: {ev.get('asphalt_repair_mass_kg', 0):.1f} kg")
+                                    with c_d2:
+                                        if ev.get("pdf_dossier") and os.path.exists(ev["pdf_dossier"]):
+                                            with open(ev["pdf_dossier"], "rb") as fpdf:
+                                                st.download_button(
+                                                    "⬇ PDF Dossier",
+                                                    fpdf.read(),
+                                                    os.path.basename(ev["pdf_dossier"]),
+                                                    "application/pdf",
+                                                    key=f"post_dl_{idx}_{ev['detection_id']}",
+                                                    use_container_width=True,
+                                                )
+
+
+    # =====================================================================
+    # TAB 2 — CITIZEN REVIEW QUEUE
+    # =====================================================================
+    with tab_queue:
+        render_citizen_queue_view(get_all_defects())
 
     # =====================================================================
     # TAB 2 — INSPECTION STUDIO
@@ -1145,16 +1449,21 @@ def main():
                     )
 
                 # Persist detections
+                os.makedirs("outputs/evidence", exist_ok=True)
                 for _, r in results["candidates_df"].iterrows():
+                    det_id = f"{image_name}_{r['candidate_id']}"
+                    saved_path = os.path.join("outputs/evidence", f"{det_id}.jpg")
+                    cv2.imwrite(saved_path, results["severity_bgr"] if results.get("severity_bgr") is not None else image_bgr)
+
                     insert_defect(
-                        detection_id=f"{image_name}_{r['candidate_id']}",
+                        detection_id=det_id,
                         track_id=r["candidate_id"],
                         latitude=None, longitude=None,
                         severity_category=r["severity_category"],
                         severity_score=r["severity_score"],
                         anomaly_score=r["avg_anomaly_score"],
                         pixel_area=r["pixel_area"],
-                        image_path=image_name,
+                        image_path=saved_path,
                         source_media=image_name,
                     )
 
@@ -1428,195 +1737,10 @@ def main():
         ])
 
         # ── 4a: Citizen Verification Queue ────────────────────────────────
+        # ── 4a: Citizen Verification Queue ────────────────────────────────
         with gov_tab1:
-            st.markdown("""
-            <div class="section-header">
-                <div class="section-icon si-green">✅</div>
-                <div>
-                    <div class="section-title">Citizen Verification Queue</div>
-                    <div class="section-desc">Review recorded defects and approve or reject before petitions are filed with authorities</div>
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
+            render_citizen_queue_view(defects_df)
 
-            if defects_df.empty:
-                st.markdown("""
-                <div class="empty-state">
-                    <div class="empty-state-icon">📋</div>
-                    <div class="empty-state-title">No defects recorded yet</div>
-                    <div class="empty-state-desc">Use the Live Dashcam Survey or Inspection Studio to log road defects first.</div>
-                </div>
-                """, unsafe_allow_html=True)
-            else:
-                status_series    = defects_df["grievance_status"].fillna("Unreported")
-                pending_mask     = status_series.isin(["Pending Review", "Unreported", "PORTAL_SYNC_QUEUED", "PENDING_USER_REVIEW"])
-                dispatched_mask  = status_series.str.startswith("Dispatched", na=False)
-                disapproved_mask = status_series.str.startswith("Disapproved", na=False)
-
-                pending_df     = defects_df[pending_mask]
-                dispatched_df  = defects_df[dispatched_mask]
-                disapproved_df = defects_df[disapproved_mask]
-
-                # Mini KPIs
-                kc1, kc2, kc3, kc4 = st.columns(4)
-                kc1.metric("Total Recorded", len(defects_df))
-                kc2.metric("⏳ Awaiting Review", len(pending_df))
-                kc3.metric("✅ Dispatched", len(dispatched_df))
-                kc4.metric("❌ Rejected", len(disapproved_df))
-
-                st.markdown("<div class='divider'></div>", unsafe_allow_html=True)
-
-                filter_view = st.segmented_control(
-                    "Show",
-                    options=[
-                        f"Pending ({len(pending_df)})",
-                        f"Dispatched ({len(dispatched_df)})",
-                        f"Rejected ({len(disapproved_df)})",
-                        f"All ({len(defects_df)})",
-                    ],
-                    default=f"Pending ({len(pending_df)})",
-                ) if hasattr(st, "segmented_control") else st.radio(
-                    "Filter",
-                    [
-                        f"Pending ({len(pending_df)})",
-                        f"Dispatched ({len(dispatched_df)})",
-                        f"Rejected ({len(disapproved_df)})",
-                        f"All ({len(defects_df)})",
-                    ],
-                    horizontal=True,
-                )
-
-                if "Pending" in filter_view:
-                    view_df = pending_df
-                elif "Dispatched" in filter_view:
-                    view_df = dispatched_df
-                elif "Rejected" in filter_view:
-                    view_df = disapproved_df
-                else:
-                    view_df = defects_df
-
-                if view_df.empty:
-                    st.caption("No records in this category.")
-                else:
-                    for _, row in view_df.iterrows():
-                        det_id   = row["detection_id"]
-                        status   = row.get("grievance_status") or "Pending Review"
-                        cat      = row.get("severity_category", "Medium")
-                        cat_l    = str(cat).lower()
-                        card_cls = _card_cls(cat)
-                        chip     = _sev_chip(cat)
-
-                        has_bev  = pd.notnull(row.get("bev_area_sqcm"))
-                        d_cm     = float(row["bev_area_sqcm"] / 100.0) if has_bev else None
-                        vol_l    = round(d_cm * 0.65, 1) if d_cm is not None else None
-
-                        has_gps  = "latitude" in row.index and pd.notnull(row.get("latitude")) and pd.notnull(row.get("longitude"))
-                        lat_val  = float(row["latitude"])  if has_gps else None
-                        lon_val  = float(row["longitude"]) if has_gps else None
-                        gps_str  = f"{lat_val:.5f}, {lon_val:.5f}" if has_gps else "Ungeotagged"
-                        d_str    = f"{d_cm:.1f} cm" if d_cm is not None else "N/A"
-                        v_str    = f"{vol_l:.1f} L"  if vol_l is not None else "N/A"
-                        ts_str   = str(row.get("timestamp", "N/A"))[:16]
-                        img_path = row.get("image_path")
-
-                        col_img, col_info, col_act = st.columns([1, 2, 1.4])
-
-                        with col_img:
-                            if img_path and os.path.exists(str(img_path)):
-                                st.image(str(img_path), use_container_width=True)
-                            else:
-                                st.markdown(f"""
-                                <div style="background:#f9fafb; border:1px dashed #e5e7eb; border-radius:8px; 
-                                     padding:28px 10px; text-align:center; color:#9ca3af; font-size:0.72rem;">
-                                    📷 No Image<br/><code style="font-size:0.65rem">{det_id[:20]}</code>
-                                </div>
-                                """, unsafe_allow_html=True)
-
-                        with col_info:
-                            st.markdown(f"""
-                            <div class="incident-card {card_cls}">
-                                <div class="incident-header">
-                                    {chip}
-                                    <span class="defect-id">{det_id[:30]}</span>
-                                </div>
-                                <div class="metrics-row">
-                                    <div class="metric-cell">
-                                        <span class="metric-label">GPS</span>
-                                        <span class="metric-value" style="font-size:0.72rem;">{gps_str}</span>
-                                    </div>
-                                    <div class="metric-cell">
-                                        <span class="metric-label">Depth</span>
-                                        <span class="metric-value">{d_str}</span>
-                                    </div>
-                                    <div class="metric-cell">
-                                        <span class="metric-label">Volume</span>
-                                        <span class="metric-value">{v_str}</span>
-                                    </div>
-                                    <div class="metric-cell">
-                                        <span class="metric-label">Recorded</span>
-                                        <span class="metric-value" style="font-size:0.72rem;">{ts_str}</span>
-                                    </div>
-                                </div>
-                            </div>
-                            """, unsafe_allow_html=True)
-
-                        with col_act:
-                            if status in ["Pending Review", "Unreported", "PORTAL_SYNC_QUEUED", "PENDING_USER_REVIEW"]:
-                                target_p = st.selectbox(
-                                    "Authority",
-                                    list(config.GOV_PORTALS.keys()),
-                                    key=f"sel_{det_id}",
-                                    format_func=lambda k: f"{k}",
-                                    label_visibility="collapsed",
-                                )
-                                col_ap, col_dis = st.columns(2)
-                                with col_ap:
-                                    if st.button("✅ Approve", key=f"ap_{det_id}", type="primary", use_container_width=True):
-                                        defect_dict = {
-                                            "detection_id": det_id,
-                                            "track_id": row.get("track_id", "TRK_0"),
-                                            "latitude": lat_val,
-                                            "longitude": lon_val,
-                                            "severity_category": cat,
-                                            "severity_score": float(row.get("severity_score", 0.5)),
-                                            "anomaly_score": float(row.get("anomaly_score", -0.2)),
-                                            "pixel_area": int(row.get("pixel_area", 4000)),
-                                            "image_path": img_path,
-                                            "source_media": row.get("source_media", "camera_feed"),
-                                            "timestamp": row.get("timestamp"),
-                                        }
-                                        res = dispatch_grievance_to_portal(defect_dict, portal_key=target_p)
-                                        update_grievance_status(
-                                            detection_id=det_id,
-                                            status="Dispatched",
-                                            ref_no=res["reference_number"],
-                                            portal=res["target_portal"],
-                                        )
-                                        CitizenNotifier().notify(
-                                            event_dict={**defect_dict, "reference_no": res["reference_number"], "target_portal": res["target_portal"]},
-                                            notification_type="GRIEVANCE_FILED",
-                                        )
-                                        st.success(f"Filed to {res['target_portal']}")
-                                        st.rerun()
-                                with col_dis:
-                                    if st.button("❌ Reject", key=f"dis_{det_id}", use_container_width=True):
-                                        disapprove_defect(det_id, reason="Rejected by citizen — false positive")
-                                        st.warning("Marked as rejected.")
-                                        st.rerun()
-
-                            elif status.startswith("Dispatched"):
-                                st.markdown(f'<div class="status-dispatched">✅ Dispatched</div>', unsafe_allow_html=True)
-                                st.caption(f"Ref: {row.get('grievance_ref_no', 'N/A')}")
-                                st.caption(f"Portal: {row.get('dispatched_portal', '—')}")
-                            elif status.startswith("Disapproved"):
-                                st.markdown('<div class="status-rejected">❌ Rejected</div>', unsafe_allow_html=True)
-                                if st.button("↩ Revert to Pending", key=f"rev_{det_id}", use_container_width=True):
-                                    update_grievance_status(det_id, status="Pending Review", ref_no="PENDING_REVIEW")
-                                    st.rerun()
-
-                        st.markdown("<div class='divider'></div>", unsafe_allow_html=True)
-
-        # ── 4b: Official Grievance Dossier ─────────────────────────────────
         with gov_tab2:
             st.markdown("""
             <div class="section-header">

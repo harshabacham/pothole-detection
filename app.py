@@ -99,20 +99,23 @@ st.markdown("""
         min-width: 0 !important;
     }
 
-    /* ─── Global Reset ─────────────────────────────────────────────────── */
-    html, body, [class*="css"] {
+    /* ─── Global Dark Theme Reset ───────────────────────────────────────── */
+    html, body, [class*="css"], [data-testid="stAppViewContainer"], .main {
         font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-        color: #111827;
-        background: #f9fafb;
+        color: #f1f5f9 !important;
+        background-color: #0b0f19 !important;
     }
 
     /* hide default header padding */
-    .block-container { padding-top: 1rem !important; }
+    .block-container {
+        padding-top: 1rem !important;
+        background-color: #0b0f19 !important;
+    }
 
-    /* ─── Page Header ──────────────────────────────────────────────────── */
+    /* ─── Page Header (Dark Mode) ───────────────────────────────────────── */
     .page-header {
-        background: #ffffff;
-        border: 1px solid #e5e7eb;
+        background: #111827;
+        border: 1px solid #1e293b;
         border-radius: 14px;
         padding: 20px 24px;
         margin-bottom: 20px;
@@ -121,30 +124,30 @@ st.markdown("""
         align-items: center;
         flex-wrap: wrap;
         gap: 14px;
-        box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+        box-shadow: 0 4px 20px rgba(0,0,0,0.4);
     }
     .page-header-left { display: flex; align-items: center; gap: 16px; }
     .header-icon {
         width: 48px; height: 48px;
-        background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+        background: linear-gradient(135deg, #38bdf8 0%, #1d4ed8 100%);
         border-radius: 14px;
         display: flex; align-items: center; justify-content: center;
         font-size: 1.4rem;
-        box-shadow: 0 4px 12px rgba(59,130,246,0.3);
+        box-shadow: 0 4px 16px rgba(56,189,248,0.3);
         flex-shrink: 0;
     }
     .header-title {
         font-size: 1.3rem;
         font-weight: 800;
-        color: #111827;
+        color: #f8fafc !important;
         margin: 0;
         line-height: 1.2;
         letter-spacing: -0.5px;
     }
     .header-subtitle {
         font-size: 0.78rem;
-        color: #6b7280;
-        margin-top: 2px;
+        color: #94a3b8 !important;
+        margin-top: 4px;
         font-weight: 500;
     }
     .header-badges { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
@@ -158,12 +161,12 @@ st.markdown("""
         gap: 5px;
         border: 1px solid;
     }
-    .badge-blue   { background: #eff6ff; color: #1d4ed8; border-color: #bfdbfe; }
-    .badge-green  { background: #f0fdf4; color: #15803d; border-color: #bbf7d0; }
-    .badge-amber  { background: #fffbeb; color: #b45309; border-color: #fde68a; }
-    .badge-slate  { background: #f8fafc; color: #475569; border-color: #e2e8f0; }
+    .badge-blue   { background: rgba(59,130,246,0.15); color: #60a5fa; border-color: rgba(59,130,246,0.3); }
+    .badge-green  { background: rgba(34,197,94,0.15); color: #4ade80; border-color: rgba(34,197,94,0.3); }
+    .badge-amber  { background: rgba(245,158,11,0.15); color: #fbbf24; border-color: rgba(245,158,11,0.3); }
+    .badge-slate  { background: rgba(148,163,184,0.15); color: #cbd5e1; border-color: rgba(148,163,184,0.3); }
 
-    /* ─── KPI Cards ────────────────────────────────────────────────────── */
+    /* ─── KPI Cards (Dark Mode) ─────────────────────────────────────────── */
     .kpi-row {
         display: grid;
         grid-template-columns: repeat(4, 1fr);
@@ -174,18 +177,19 @@ st.markdown("""
     @media (max-width: 500px) { .kpi-row { grid-template-columns: 1fr; } }
 
     .kpi-card {
-        background: #ffffff;
-        border: 1px solid #e5e7eb;
+        background: #111827;
+        border: 1px solid #1e293b;
         border-radius: 12px;
         padding: 16px 18px;
         position: relative;
         overflow: hidden;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+        box-shadow: 0 4px 16px rgba(0,0,0,0.3);
         transition: box-shadow 0.2s, transform 0.2s;
     }
     .kpi-card:hover {
-        box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+        box-shadow: 0 6px 20px rgba(0,0,0,0.5);
         transform: translateY(-1px);
+        border-color: #334155;
     }
     .kpi-card-accent {
         position: absolute; top: 0; left: 0; right: 0; height: 3px;
@@ -204,53 +208,54 @@ st.markdown("""
     .kpi-label {
         font-size: 0.67rem;
         font-weight: 700;
-        color: #9ca3af;
+        color: #94a3b8 !important;
         text-transform: uppercase;
         letter-spacing: 0.7px;
     }
     .kpi-number {
         font-size: 1.9rem;
         font-weight: 800;
-        color: #111827;
+        color: #f8fafc !important;
         font-family: 'JetBrains Mono', monospace;
         line-height: 1.1;
         margin: 2px 0;
     }
     .kpi-sub {
         font-size: 0.7rem;
-        color: #9ca3af;
+        color: #64748b !important;
         font-weight: 500;
         margin-top: 2px;
     }
 
-    /* ─── Tab Styling ──────────────────────────────────────────────────── */
+    /* ─── Tab Styling (Dark Mode) ──────────────────────────────────────── */
     .stTabs [data-baseweb="tab-list"] {
-        gap: 4px;
-        background: #f3f4f6;
+        gap: 6px;
+        background: #0f172a !important;
+        border: 1px solid #1e293b !important;
         border-radius: 12px;
-        padding: 4px;
-        border: none !important;
+        padding: 5px;
         margin-bottom: 20px;
     }
     .stTabs [data-baseweb="tab"] {
-        border-radius: 9px !important;
-        padding: 8px 20px !important;
+        border-radius: 8px !important;
+        padding: 8px 18px !important;
         font-weight: 600 !important;
         font-size: 0.84rem !important;
-        color: #6b7280 !important;
+        color: #94a3b8 !important;
         background: transparent !important;
         border: none !important;
         transition: all 0.15s ease !important;
     }
     .stTabs [aria-selected="true"] {
-        background: #ffffff !important;
-        color: #111827 !important;
-        box-shadow: 0 1px 4px rgba(0,0,0,0.1) !important;
+        background: #1e293b !important;
+        color: #38bdf8 !important;
+        border: 1px solid #334155 !important;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.3) !important;
     }
     .stTabs [data-baseweb="tab-border"] { display: none !important; }
     .stTabs [data-baseweb="tab-highlight"] { display: none !important; }
 
-    /* ─── Section Headers ──────────────────────────────────────────────── */
+    /* ─── Section Headers (Dark Mode) ──────────────────────────────────── */
     .section-header {
         display: flex;
         align-items: center;
@@ -264,45 +269,45 @@ st.markdown("""
         font-size: 0.9rem;
         flex-shrink: 0;
     }
-    .si-blue   { background: #eff6ff; }
-    .si-green  { background: #f0fdf4; }
-    .si-amber  { background: #fffbeb; }
-    .si-red    { background: #fef2f2; }
-    .si-purple { background: #faf5ff; }
+    .si-blue   { background: rgba(59,130,246,0.18); color: #60a5fa; }
+    .si-green  { background: rgba(34,197,94,0.18); color: #4ade80; }
+    .si-amber  { background: rgba(245,158,11,0.18); color: #fbbf24; }
+    .si-red    { background: rgba(239,68,68,0.18); color: #f87171; }
+    .si-purple { background: rgba(168,85,247,0.18); color: #c084fc; }
     .section-title {
-        font-size: 1.0rem;
+        font-size: 1.05rem;
         font-weight: 700;
-        color: #111827;
+        color: #f8fafc !important;
         margin: 0;
     }
     .section-desc {
-        font-size: 0.74rem;
-        color: #9ca3af;
-        margin-top: 1px;
+        font-size: 0.76rem;
+        color: #94a3b8 !important;
+        margin-top: 2px;
     }
 
-    /* ─── Info/Empty State ─────────────────────────────────────────────── */
+    /* ─── Info/Empty State (Dark Mode) ─────────────────────────────────── */
     .empty-state {
-        background: #f9fafb;
-        border: 2px dashed #e5e7eb;
+        background: #111827;
+        border: 2px dashed #1e293b;
         border-radius: 14px;
         padding: 40px 24px;
         text-align: center;
-        color: #9ca3af;
+        color: #94a3b8;
     }
     .empty-state-icon { font-size: 2.5rem; margin-bottom: 10px; }
-    .empty-state-title { font-size: 1.0rem; font-weight: 600; color: #374151; margin-bottom: 6px; }
-    .empty-state-desc { font-size: 0.82rem; }
+    .empty-state-title { font-size: 1.0rem; font-weight: 600; color: #f1f5f9 !important; margin-bottom: 6px; }
+    .empty-state-desc { font-size: 0.82rem; color: #64748b !important; }
 
-    /* ─── Incident Cards ───────────────────────────────────────────────── */
+    /* ─── Incident Cards (Dark Mode) ───────────────────────────────────── */
     .incident-card {
-        background: #ffffff;
-        border: 1px solid #e5e7eb;
+        background: #111827;
+        border: 1px solid #1e293b;
         border-radius: 12px;
         padding: 16px;
         margin-bottom: 12px;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.04);
-        border-left: 4px solid #e5e7eb;
+        box-shadow: 0 4px 14px rgba(0,0,0,0.3);
+        border-left: 4px solid #334155;
         transition: box-shadow 0.15s;
     }
     .incident-card.critical { border-left-color: #ef4444; }
@@ -324,14 +329,14 @@ st.markdown("""
         padding: 3px 9px;
         border-radius: 20px;
     }
-    .chip-high   { background: #fef2f2; color: #b91c1c; }
-    .chip-medium { background: #fffbeb; color: #92400e; }
-    .chip-low    { background: #f0fdf4; color: #166534; }
+    .chip-high   { background: rgba(239,68,68,0.2); color: #f87171; border: 1px solid rgba(239,68,68,0.4); }
+    .chip-medium { background: rgba(245,158,11,0.2); color: #fbbf24; border: 1px solid rgba(245,158,11,0.4); }
+    .chip-low    { background: rgba(34,197,94,0.2); color: #4ade80; border: 1px solid rgba(34,197,94,0.4); }
 
     .defect-id {
         font-family: 'JetBrains Mono', monospace;
         font-size: 0.72rem;
-        color: #9ca3af;
+        color: #94a3b8 !important;
         font-weight: 500;
     }
 
@@ -339,8 +344,8 @@ st.markdown("""
         display: grid;
         grid-template-columns: repeat(4, 1fr);
         gap: 8px;
-        background: #f9fafb;
-        border: 1px solid #f3f4f6;
+        background: #0b0f19;
+        border: 1px solid #1e293b;
         border-radius: 8px;
         padding: 10px 12px;
         margin: 10px 0;
@@ -349,39 +354,40 @@ st.markdown("""
     .metric-label {
         font-size: 0.62rem;
         font-weight: 600;
-        color: #9ca3af;
+        color: #64748b !important;
         text-transform: uppercase;
         letter-spacing: 0.5px;
     }
     .metric-value {
         font-size: 0.84rem;
         font-weight: 700;
-        color: #111827;
+        color: #f8fafc !important;
         font-family: 'JetBrains Mono', monospace;
         margin-top: 1px;
     }
 
-    /* ─── Ticket Card (live dashcam events) ────────────────────────────── */
+    /* ─── Ticket Card (Dark Mode) ──────────────────────────────────────── */
     .ticket {
-        background: #ffffff;
-        border: 1px solid #e5e7eb;
-        border-left: 4px solid #e5e7eb;
+        background: #111827;
+        border: 1px solid #1e293b;
+        border-left: 4px solid #334155;
         border-radius: 10px;
         padding: 12px 14px;
         margin-bottom: 10px;
         font-size: 0.82rem;
+        color: #f1f5f9;
     }
     .ticket.t-high   { border-left-color: #ef4444; }
     .ticket.t-medium { border-left-color: #f59e0b; }
     .ticket.t-low    { border-left-color: #22c55e; }
     .ticket-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
-    .ticket-road { font-weight: 700; color: #111827; }
-    .ticket-ref  { font-family: 'JetBrains Mono', monospace; font-size: 0.68rem; color: #9ca3af; }
+    .ticket-road { font-weight: 700; color: #f8fafc; }
+    .ticket-ref  { font-family: 'JetBrains Mono', monospace; font-size: 0.68rem; color: #94a3b8; }
     .ticket-stats { display: flex; gap: 10px; }
-    .ticket-stat { color: #6b7280; }
-    .ticket-stat span { font-weight: 700; color: #374151; }
+    .ticket-stat { color: #94a3b8; }
+    .ticket-stat span { font-weight: 700; color: #f1f5f9; }
 
-    /* ─── Analysis Result Grid ─────────────────────────────────────────── */
+    /* ─── Analysis Result Grid (Dark Mode) ─────────────────────────────── */
     .result-metric-grid {
         display: grid;
         grid-template-columns: repeat(6, 1fr);
@@ -390,111 +396,91 @@ st.markdown("""
     }
     @media (max-width: 768px) { .result-metric-grid { grid-template-columns: repeat(3, 1fr); } }
     .result-metric {
-        background: #ffffff;
-        border: 1px solid #e5e7eb;
+        background: #111827;
+        border: 1px solid #1e293b;
         border-radius: 10px;
         padding: 12px;
         text-align: center;
-        box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+        box-shadow: 0 2px 8px rgba(0,0,0,0.2);
     }
     .result-metric-num {
         font-size: 1.5rem;
         font-weight: 800;
-        color: #111827;
+        color: #f8fafc !important;
         font-family: 'JetBrains Mono', monospace;
     }
     .result-metric-lbl {
         font-size: 0.65rem;
         font-weight: 600;
-        color: #9ca3af;
+        color: #94a3b8 !important;
         text-transform: uppercase;
         letter-spacing: 0.5px;
         margin-top: 2px;
     }
 
-    /* ─── Buttons ──────────────────────────────────────────────────────── */
+    /* ─── Buttons (Dark Mode) ──────────────────────────────────────────── */
     div.stButton > button[kind="primary"] {
-        background: linear-gradient(135deg, #3b82f6, #1d4ed8) !important;
+        background: linear-gradient(135deg, #0284c7, #2563eb) !important;
         color: #ffffff !important;
         border: none !important;
         border-radius: 8px !important;
         font-weight: 600 !important;
         font-size: 0.84rem !important;
         padding: 9px 20px !important;
-        box-shadow: 0 2px 6px rgba(59,130,246,0.3) !important;
+        box-shadow: 0 4px 14px rgba(37,99,235,0.4) !important;
         transition: all 0.15s ease !important;
     }
     div.stButton > button[kind="primary"]:hover {
-        box-shadow: 0 4px 12px rgba(59,130,246,0.4) !important;
+        box-shadow: 0 6px 18px rgba(37,99,235,0.6) !important;
         transform: translateY(-1px) !important;
     }
     div.stButton > button {
+        background: #1e293b !important;
+        color: #f1f5f9 !important;
         border-radius: 8px !important;
         font-weight: 600 !important;
         font-size: 0.83rem !important;
-        border: 1px solid #e5e7eb !important;
+        border: 1px solid #334155 !important;
         transition: all 0.15s ease !important;
     }
-    div.stButton > button:hover { background: #f9fafb !important; }
+    div.stButton > button:hover {
+        background: #334155 !important;
+        border-color: #475569 !important;
+    }
 
-    /* ─── Forms & Inputs ───────────────────────────────────────────────── */
+    /* ─── Forms, Inputs & Expanders (Dark Mode) ────────────────────────── */
+    div[data-testid="stForm"] {
+        background: #111827 !important;
+        border: 1px solid #1e293b !important;
+        border-radius: 12px;
+        padding: 18px;
+    }
+    [data-testid="stExpander"] {
+        background: #111827 !important;
+        border: 1px solid #1e293b !important;
+        border-radius: 10px !important;
+    }
     .stTextInput input, .stNumberInput input, .stSelectbox div[data-baseweb="select"] {
+        background: #0b0f19 !important;
+        color: #f1f5f9 !important;
         border-radius: 8px !important;
-        border-color: #e5e7eb !important;
+        border-color: #334155 !important;
     }
     .stTextInput input:focus, .stNumberInput input:focus {
-        border-color: #3b82f6 !important;
-        box-shadow: 0 0 0 3px rgba(59,130,246,0.15) !important;
-    }
-    div[data-testid="stForm"] {
-        background: #f9fafb;
-        border: 1px solid #e5e7eb;
-        border-radius: 12px;
-        padding: 16px;
+        border-color: #38bdf8 !important;
+        box-shadow: 0 0 0 3px rgba(56,189,248,0.2) !important;
     }
 
-    /* ─── Dataframe ────────────────────────────────────────────────────── */
-    .stDataFrame { border-radius: 10px; overflow: hidden; }
-
-    /* ─── Expander ─────────────────────────────────────────────────────── */
-    .streamlit-expanderHeader {
-        background: #f9fafb !important;
-        border: 1px solid #e5e7eb !important;
-        border-radius: 10px !important;
-        font-weight: 600 !important;
-    }
-
-    /* ─── Divider ──────────────────────────────────────────────────────── */
-    .divider {
-        height: 1px;
-        background: #f3f4f6;
-        margin: 16px 0;
-    }
-
-    /* ─── Progress Bar ─────────────────────────────────────────────────── */
-    .stProgress > div > div { background: #3b82f6 !important; border-radius: 4px !important; }
-
-    /* ─── Alert/Info boxes ─────────────────────────────────────────────── */
+    /* ─── Dataframe & Progress (Dark Mode) ──────────────────────────────── */
+    .stDataFrame { border-radius: 10px; overflow: hidden; background: #111827; }
+    .divider { height: 1px; background: #1e293b; margin: 16px 0; }
+    .stProgress > div > div { background: #38bdf8 !important; border-radius: 4px !important; }
     .stAlert { border-radius: 10px !important; }
 
-    /* ─── Approve / Disapprove buttons ────────────────────────────────── */
-    .approve-btn > button {
-        background: #22c55e !important;
-        color: #fff !important;
-        border: none !important;
-    }
-    .approve-btn > button:hover { background: #16a34a !important; }
-    .disapprove-btn > button {
-        background: #ef4444 !important;
-        color: #fff !important;
-        border: none !important;
-    }
-    .disapprove-btn > button:hover { background: #dc2626 !important; }
-
     /* ─── Status pill ──────────────────────────────────────────────────── */
-    .status-dispatched { color: #15803d; font-weight: 700; font-size: 0.8rem; }
-    .status-pending    { color: #b45309; font-weight: 700; font-size: 0.8rem; }
-    .status-rejected   { color: #b91c1c; font-weight: 700; font-size: 0.8rem; }
+    .status-dispatched { color: #4ade80 !important; font-weight: 700; font-size: 0.8rem; }
+    .status-pending    { color: #fbbf24 !important; font-weight: 700; font-size: 0.8rem; }
+    .status-rejected   { color: #f87171 !important; font-weight: 700; font-size: 0.8rem; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -663,9 +649,9 @@ def render_citizen_queue_view(defects_df: pd.DataFrame, key_prefix: str = "cq"):
                 st.image(str(img_path), use_container_width=True)
             else:
                 st.markdown(f"""
-                <div style="background:#f9fafb; border:1px dashed #e5e7eb; border-radius:8px; 
-                     padding:28px 10px; text-align:center; color:#9ca3af; font-size:0.72rem;">
-                    📷 Photo Evidence<br/><code style="font-size:0.65rem">{det_id[:20]}</code>
+                <div style="background:#1e293b; border:1px dashed #334155; border-radius:8px; 
+                     padding:28px 10px; text-align:center; color:#94a3b8; font-size:0.72rem;">
+                    📷 Photo Evidence<br/><code style="font-size:0.65rem; color:#cbd5e1; background:#0f172a;">{det_id[:20]}</code>
                 </div>
                 """, unsafe_allow_html=True)
 
@@ -1901,14 +1887,14 @@ def main():
             pci_col1, pci_col2 = st.columns([1, 2])
             with pci_col1:
                 st.markdown(f"""
-                <div style="background:#ffffff; border:1px solid #e5e7eb; border-radius:14px; padding:28px; text-align:center; box-shadow:0 1px 4px rgba(0,0,0,0.04);">
-                    <div style="font-size:0.68rem; font-weight:700; color:#9ca3af; text-transform:uppercase; letter-spacing:0.7px; margin-bottom:8px;">
+                <div style="background:#111827; border:1px solid #1e293b; border-radius:14px; padding:28px; text-align:center; box-shadow:0 4px 16px rgba(0,0,0,0.3);">
+                    <div style="font-size:0.68rem; font-weight:700; color:#94a3b8; text-transform:uppercase; letter-spacing:0.7px; margin-bottom:8px;">
                         Pavement Condition Index
                     </div>
                     <div style="font-size:4rem; font-weight:900; color:{pci_color}; font-family:'JetBrains Mono',monospace; line-height:1;">
                         {pci_score}
                     </div>
-                    <div style="font-size:0.75rem; color:#6b7280; margin-top:4px;">out of 100</div>
+                    <div style="font-size:0.75rem; color:#94a3b8; margin-top:4px;">out of 100</div>
                     <div style="margin-top:12px;">
                         <span style="background:{pci_color}20; color:{pci_color}; font-weight:700; font-size:0.82rem; padding:4px 12px; border-radius:20px;">
                             {pci_rating}

@@ -37,7 +37,9 @@ from src.database import (
     update_grievance_status,
     disapprove_defect,
     get_pending_review_defects,
+    update_defect_location,
 )
+from src.gps_handler import extract_image_gps, get_device_ip_location
 from src.map_visualization import build_geographic_map
 from src.video_processor import process_road_video
 from src.gis_export import (
@@ -560,11 +562,15 @@ def render_citizen_queue_view(defects_df: pd.DataFrame, key_prefix: str = "cq"):
                     filed_count = 0
                     for _, prow in pending_df.iterrows():
                         p_id = prow["detection_id"]
+                        p_lat = float(prow["latitude"]) if pd.notnull(prow.get("latitude")) else st.session_state.get("user_lat", 28.6139)
+                        p_lon = float(prow["longitude"]) if pd.notnull(prow.get("longitude")) else st.session_state.get("user_lon", 77.2090)
+                        if not pd.notnull(prow.get("latitude")):
+                            update_defect_location(p_id, p_lat, p_lon)
                         p_payload = {
                             "detection_id": p_id,
                             "track_id": prow.get("track_id", "TRK_0"),
-                            "latitude": float(prow["latitude"]) if pd.notnull(prow.get("latitude")) else None,
-                            "longitude": float(prow["longitude"]) if pd.notnull(prow.get("longitude")) else None,
+                            "latitude": p_lat,
+                            "longitude": p_lon,
                             "severity_category": prow.get("severity_category", "Medium"),
                             "severity_score": float(prow.get("severity_score", 0.5)),
                             "anomaly_score": float(prow.get("anomaly_score", -0.2)),
@@ -636,7 +642,11 @@ def render_citizen_queue_view(defects_df: pd.DataFrame, key_prefix: str = "cq"):
         has_gps  = "latitude" in row.index and pd.notnull(row.get("latitude")) and pd.notnull(row.get("longitude"))
         lat_val  = float(row["latitude"])  if has_gps else None
         lon_val  = float(row["longitude"]) if has_gps else None
-        gps_str  = f"{lat_val:.5f}, {lon_val:.5f}" if has_gps else "Ungeotagged"
+        if has_gps:
+            gps_link = f"https://www.google.com/maps?q={lat_val},{lon_val}"
+            gps_str  = f"<a href='{gps_link}' target='_blank' style='color:#38bdf8; text-decoration:none; font-weight:600;'>📍 {lat_val:.4f}, {lon_val:.4f}</a>"
+        else:
+            gps_str  = "<span style='color:#f59e0b; font-weight:600;'>⚠️ Ungeotagged</span>"
         d_str    = f"{d_cm:.1f} cm" if d_cm is not None else "N/A"
         v_str    = f"{vol_l:.1f} L"  if vol_l is not None else "N/A"
         ts_str   = str(row.get("timestamp", "N/A"))[:16]
@@ -695,11 +705,15 @@ def render_citizen_queue_view(defects_df: pd.DataFrame, key_prefix: str = "cq"):
                 col_ap, col_dis = st.columns(2)
                 with col_ap:
                     if st.button("✅ Approve", key=f"{key_prefix}_ap_{det_id}", type="primary", use_container_width=True):
+                        final_lat = lat_val if lat_val is not None else st.session_state.get("user_lat", 28.6139)
+                        final_lon = lon_val if lon_val is not None else st.session_state.get("user_lon", 77.2090)
+                        if lat_val is None:
+                            update_defect_location(det_id, final_lat, final_lon)
                         defect_dict = {
                             "detection_id": det_id,
                             "track_id": row.get("track_id", "TRK_0"),
-                            "latitude": lat_val,
-                            "longitude": lon_val,
+                            "latitude": final_lat,
+                            "longitude": final_lon,
                             "severity_category": cat,
                             "severity_score": float(row.get("severity_score", 0.5)),
                             "anomaly_score": float(row.get("anomaly_score", -0.2)),
@@ -725,6 +739,13 @@ def render_citizen_queue_view(defects_df: pd.DataFrame, key_prefix: str = "cq"):
                     if st.button("❌ Reject", key=f"{key_prefix}_dis_{det_id}", use_container_width=True):
                         disapprove_defect(det_id, reason="Rejected by citizen — false positive")
                         st.warning("Marked as rejected.")
+                        st.rerun()
+
+                if not has_gps:
+                    u_lat = st.session_state.get("user_lat", 28.6139)
+                    u_lon = st.session_state.get("user_lon", 77.2090)
+                    if st.button(f"📍 Tag GPS ({u_lat:.2f}, {u_lon:.2f})", key=f"{key_prefix}_tag_{det_id}", use_container_width=True, help="Tag this defect with active GPS coordinates"):
+                        update_defect_location(det_id, u_lat, u_lon)
                         st.rerun()
 
             elif status.startswith("Dispatched"):
@@ -872,6 +893,30 @@ def main():
     status_series = defects_df["grievance_status"].fillna("Unreported") if not defects_df.empty and "grievance_status" in defects_df.columns else pd.Series(dtype=object)
     pending_count = int(status_series.isin(["Pending Review", "Unreported", "PORTAL_SYNC_QUEUED", "PENDING_USER_REVIEW"]).sum())
 
+    # ── Geolocation Telemetry Initialization ──────────────────────────────
+    if "user_lat" not in st.session_state or "user_lon" not in st.session_state:
+        qp_lat = st.query_params.get("lat")
+        qp_lon = st.query_params.get("lon")
+        if qp_lat and qp_lon:
+            try:
+                st.session_state["user_lat"] = round(float(qp_lat), 5)
+                st.session_state["user_lon"] = round(float(qp_lon), 5)
+                st.session_state["user_loc_src"] = "Browser GPS Telemetry"
+            except Exception:
+                pass
+        if "user_lat" not in st.session_state:
+            fast_loc = get_device_ip_location()
+            st.session_state["user_lat"] = round(float(fast_loc["latitude"]), 5)
+            st.session_state["user_lon"] = round(float(fast_loc["longitude"]), 5)
+            st.session_state["user_loc_src"] = fast_loc.get("source", "Network IP Fix")
+            city_str = fast_loc.get("city", "")
+            reg_str = fast_loc.get("region", "")
+            st.session_state["user_road"] = f"{city_str}, {reg_str}" if city_str else "National Highway Corridor"
+
+    if "user_road" not in st.session_state or not st.session_state["user_road"]:
+        rev = reverse_geocode_location(st.session_state["user_lat"], st.session_state["user_lon"])
+        st.session_state["user_road"] = rev.get("road", "Highway Corridor")
+
     # ── Main Tabs ──────────────────────────────────────────────────────────
     tab_camera, tab_queue, tab_inspect, tab_gis, tab_gov = st.tabs([
         "📹  Live Camera & Survey",
@@ -904,8 +949,56 @@ def main():
             horizontal=True,
         )
 
+        curr_lat = st.session_state.get("user_lat", 28.6139)
+        curr_lon = st.session_state.get("user_lon", 77.2090)
+        curr_road = st.session_state.get("user_road", "National Highway Corridor")
+        curr_src = st.session_state.get("user_loc_src", "Network Fix")
+        maps_link = f"https://www.google.com/maps?q={curr_lat},{curr_lon}"
+
+        with st.expander(f"📍 Location & GPS: {curr_road} ({curr_lat:.4f}° N, {curr_lon:.4f}° E)", expanded=False):
+            st.markdown(f"""
+            <div style="background:#111827; border:1px solid #1e293b; border-radius:10px; padding:14px; margin-bottom:10px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+                    <div>
+                        <span style="font-size:0.72rem; text-transform:uppercase; letter-spacing:0.8px; color:#38bdf8; font-weight:700;">Active GPS Telemetry</span>
+                        <div style="font-size:1.05rem; font-weight:800; color:#f8fafc; margin-top:2px;">{curr_road}</div>
+                        <div style="font-size:0.8rem; color:#94a3b8; font-family:monospace; margin-top:2px;">
+                            Lat: {curr_lat:.5f} · Lon: {curr_lon:.5f} · <a href="{maps_link}" target="_blank" style="color:#38bdf8; text-decoration:none; font-weight:600;">🗺️ View on Google Maps</a>
+                        </div>
+                    </div>
+                    <div>
+                        <span style="background:rgba(56,189,248,0.15); color:#38bdf8; border:1px solid rgba(56,189,248,0.3); padding:4px 10px; border-radius:20px; font-size:0.75rem; font-weight:600;">
+                            🛰️ {curr_src}
+                        </span>
+                    </div>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+
+            loc_c1, loc_c2, loc_c3, loc_c4 = st.columns([1.6, 1.1, 1.1, 1])
+            with loc_c1:
+                edit_road = st.text_input("Road / Location Name", value=curr_road, key="cfg_road_name")
+            with loc_c2:
+                edit_lat = st.number_input("Latitude", value=float(curr_lat), format="%.5f", key="cfg_lat")
+            with loc_c3:
+                edit_lon = st.number_input("Longitude", value=float(curr_lon), format="%.5f", key="cfg_lon")
+            with loc_c4:
+                st.markdown("<div style='height:28px'></div>", unsafe_allow_html=True)
+                if st.button("🔄 Auto-Fix GPS", use_container_width=True, help="Re-acquire network/IP location coordinates"):
+                    refreshed = get_device_ip_location()
+                    st.session_state["user_lat"] = round(float(refreshed["latitude"]), 5)
+                    st.session_state["user_lon"] = round(float(refreshed["longitude"]), 5)
+                    st.session_state["user_road"] = f"{refreshed.get('city', 'Highway')}, {refreshed.get('region', '')}"
+                    st.session_state["user_loc_src"] = refreshed.get("source", "Network IP Fix")
+                    st.rerun()
+
+            if edit_road != curr_road or edit_lat != curr_lat or edit_lon != curr_lon:
+                st.session_state["user_road"] = edit_road
+                st.session_state["user_lat"] = edit_lat
+                st.session_state["user_lon"] = edit_lon
+
         if "Live Camera" in cam_mode:
-            st.info("📱 **Live Camera Detection**: Turn on your camera below and point it at the road surface. Tap **Capture** to take photos of potholes or pavement defects. The AI detects the pothole in real-time, estimates severity & 3D depth, and automatically saves it for citizen approval before filing.")
+            st.info("📱 **Live Camera Detection**: Turn on your camera below and point it at the road surface. Tap **Capture** to take photos of potholes or pavement defects. The AI detects the pothole in real-time, estimates severity & 3D depth, and automatically saves it with your active GPS coordinates.")
 
             cam_shot = st.camera_input("Point camera at road defect / surface", label_visibility="visible")
 
@@ -934,20 +1027,25 @@ def main():
                     ev_path = os.path.join("outputs/evidence", img_filename)
                     cv2.imwrite(ev_path, annotated)
 
-                    # Persist detections into database as Pending Review
+                    active_lat = st.session_state.get("user_lat", curr_lat)
+                    active_lon = st.session_state.get("user_lon", curr_lon)
+                    active_road = st.session_state.get("user_road", curr_road)
+                    active_map_link = f"https://www.google.com/maps?q={active_lat},{active_lon}"
+
+                    # Persist detections into database as Pending Review with ACTIVE GPS
                     if n_cands > 0:
                         for idx, r in cand_df.iterrows():
                             d_id = f"CAM_{timestamp_now}_{r.get('candidate_id', idx)}"
                             insert_defect(
                                 detection_id=d_id,
                                 track_id=str(r.get("candidate_id", idx)),
-                                latitude=None, longitude=None,
+                                latitude=active_lat, longitude=active_lon,
                                 severity_category=r.get("severity_category", "Medium"),
                                 severity_score=float(r.get("severity_score", 0.5)),
                                 anomaly_score=float(r.get("avg_anomaly_score", -0.2)),
                                 pixel_area=int(r.get("pixel_area", 4000)),
                                 image_path=ev_path,
-                                source_media="Live Browser Camera",
+                                source_media=f"Live Camera ({active_road})",
                             )
 
                     # View detection
@@ -959,6 +1057,7 @@ def main():
                             st.success(f"🚨 **{n_cands} Road Defect(s) Detected & Saved!**")
                             st.markdown(f"""
                             - **Status**: ⏳ Saved to **Citizen Review Queue** (`Pending Review`)
+                            - **Location**: 📍 `{active_road}` ({active_lat:.5f}, {active_lon:.5f}) · [Google Maps]({active_map_link})
                             - **Severity**: {res.get('high_severity_count', 0)} High · {res.get('medium_severity_count', 0)} Medium · {res.get('low_severity_count', 0)} Low
                             - **Action**: Approve below to file directly to government authorities, or reject if false alarm.
                             """)
@@ -977,13 +1076,14 @@ def main():
                                         d_id = f"CAM_{timestamp_now}_{r.get('candidate_id', idx)}"
                                         d_payload = {
                                             "detection_id": d_id,
-                                            "latitude": None, "longitude": None,
+                                            "latitude": active_lat, "longitude": active_lon,
+                                            "road": active_road,
                                             "severity_category": r.get("severity_category", "Medium"),
                                             "severity_score": float(r.get("severity_score", 0.5)),
                                             "anomaly_score": float(r.get("avg_anomaly_score", -0.2)),
                                             "pixel_area": int(r.get("pixel_area", 4000)),
                                             "image_path": ev_path,
-                                            "source_media": "Live Browser Camera",
+                                            "source_media": f"Live Camera ({active_road})",
                                         }
                                         d_res = dispatch_grievance_to_portal(d_payload, portal_key=auth_choice)
                                         last_ref = d_res["reference_number"]
@@ -1390,6 +1490,18 @@ def main():
                         use_pca_recon_error=use_pca_recon,
                     )
 
+                # Geotag check: EXIF GPS from uploaded image or active session location
+                exif_lat, exif_lon = None, None
+                if "Upload Image" in src_choice and 'up_file' in locals() and up_file is not None:
+                    os.makedirs("temp", exist_ok=True)
+                    temp_up = os.path.join("temp", f"temp_up_{image_name}")
+                    with open(temp_up, "wb") as fu:
+                        fu.write(file_bytes)
+                    exif_lat, exif_lon = extract_image_gps(temp_up)
+
+                target_lat = exif_lat if exif_lat is not None else st.session_state.get("user_lat", 28.6139)
+                target_lon = exif_lon if exif_lon is not None else st.session_state.get("user_lon", 77.2090)
+
                 # Persist detections
                 os.makedirs("outputs/evidence", exist_ok=True)
                 for _, r in results["candidates_df"].iterrows():
@@ -1400,13 +1512,13 @@ def main():
                     insert_defect(
                         detection_id=det_id,
                         track_id=r["candidate_id"],
-                        latitude=None, longitude=None,
+                        latitude=target_lat, longitude=target_lon,
                         severity_category=r["severity_category"],
                         severity_score=r["severity_score"],
                         anomaly_score=r["avg_anomaly_score"],
                         pixel_area=r["pixel_area"],
                         image_path=saved_path,
-                        source_media=image_name,
+                        source_media=f"Studio ({image_name})",
                     )
 
                 # Metric summary
@@ -1441,6 +1553,10 @@ def main():
                 """, unsafe_allow_html=True)
 
                 # Telemetry badges for unsupervised signals
+                gps_badge = f'<span class="badge" style="background:rgba(56,189,248,0.15); color:#38bdf8; border:1px solid rgba(56,189,248,0.3); padding:4px 8px; border-radius:6px; font-size:0.75rem; margin-right:6px;">📍 GPS: {target_lat:.4f}, {target_lon:.4f}</span>'
+                if exif_lat is not None:
+                    gps_badge = f'<span class="badge" style="background:rgba(34,197,94,0.15); color:#4ade80; border:1px solid rgba(34,197,94,0.3); padding:4px 8px; border-radius:6px; font-size:0.75rem; margin-right:6px;">📍 Camera EXIF: {target_lat:.5f}, {target_lon:.5f}</span>'
+
                 night_badge = ""
                 if r.get("is_night_scene"):
                     night_badge = f'<span class="badge" style="background:rgba(234,179,8,0.15); color:#facc15; border:1px solid rgba(234,179,8,0.3); padding:4px 8px; border-radius:6px; font-size:0.75rem; margin-right:6px;">🌙 Night-Vision Enhanced (Lum: {r.get("night_luminance")})</span>'
@@ -1451,7 +1567,7 @@ def main():
 
                 detector_badge = f'<span class="badge" style="background:rgba(167,139,250,0.15); color:#a78bfa; border:1px solid rgba(167,139,250,0.3); padding:4px 8px; border-radius:6px; font-size:0.75rem;">⚡ {r.get("detector_mode_used", detector_mode)}</span>'
 
-                st.markdown(f'<div style="margin: 10px 0 16px 0;">{night_badge}{recon_badge}{detector_badge}</div>', unsafe_allow_html=True)
+                st.markdown(f'<div style="margin: 10px 0 16px 0;">{gps_badge}{night_badge}{recon_badge}{detector_badge}</div>', unsafe_allow_html=True)
 
                 if results["candidate_count"] > 0:
                     st.success(f"✅ Detected {results['candidate_count']} candidate defects — logged to database.")

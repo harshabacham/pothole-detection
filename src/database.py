@@ -177,6 +177,36 @@ def update_grievance_status(
     return success
 
 
+def update_defect_location(
+    detection_id: str,
+    latitude: float,
+    longitude: float,
+    db_path: str = None,
+) -> bool:
+    """
+    Update geospatial coordinates (latitude, longitude) of an existing defect record.
+    """
+    conn = get_db_connection(db_path)
+    cursor = conn.cursor()
+    success = False
+
+    try:
+        cursor.execute("""
+        UPDATE defect_records
+        SET latitude = ?,
+            longitude = ?
+        WHERE detection_id = ?
+        """, (latitude, longitude, detection_id))
+        conn.commit()
+        success = (cursor.rowcount > 0)
+    except Exception as exc:
+        print(f"[ERROR] database: Failed to update location for {detection_id}: {exc}")
+    finally:
+        conn.close()
+
+    return success
+
+
 def disapprove_defect(
     detection_id: str,
     reason: str = "Disapproved by user (False Positive)",

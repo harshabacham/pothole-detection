@@ -134,3 +134,37 @@ def interpolate_gps(gps_df: pd.DataFrame, timestamp_sec: float) -> tuple:
 
     return round(interp_lat, 6), round(interp_lon, 6)
 
+
+def get_device_ip_location() -> dict:
+    """
+    Fetch approximate device location based on client IP as a fast fallback.
+    Returns dict with latitude, longitude, city, region, country, and status.
+    """
+    try:
+        import requests
+        resp = requests.get("http://ip-api.com/json/", timeout=2.0).json()
+        if resp.get("status") == "success":
+            return {
+                "latitude": float(resp.get("lat")),
+                "longitude": float(resp.get("lon")),
+                "city": resp.get("city", ""),
+                "region": resp.get("regionName", ""),
+                "country": resp.get("country", "India"),
+                "source": "Network IP Geolocation",
+                "success": True,
+            }
+    except Exception:
+        pass
+
+    # Standard default Indian highway corridor (Delhi-NCR / NH-48)
+    return {
+        "latitude": 28.6139,
+        "longitude": 77.2090,
+        "city": "New Delhi",
+        "region": "Delhi",
+        "country": "India",
+        "source": "Default Highway Location",
+        "success": False,
+    }
+
+

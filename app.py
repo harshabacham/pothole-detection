@@ -943,7 +943,7 @@ def main():
         cam_mode = st.radio(
             "Survey Detection Source",
             [
-                "📱  Live Camera (Phone / Browser WebCam)",
+                "📱  Live Camera & Photo Upload (Quick Survey)",
                 "🎬  Continuous Video Survey (Benchmark / Dashcam File)",
             ],
             horizontal=True,
@@ -997,19 +997,59 @@ def main():
                 st.session_state["user_lat"] = edit_lat
                 st.session_state["user_lon"] = edit_lon
 
-        if "Live Camera" in cam_mode:
-            st.info("📱 **Live Camera Detection**: Turn on your camera below and point it at the road surface. Tap **Capture** to take photos of potholes or pavement defects. The AI detects the pothole in real-time, estimates severity & 3D depth, and automatically saves it with your active GPS coordinates.")
+        if "Live Camera" in cam_mode or "Upload" in cam_mode:
+            st.info("📷 **Live Camera & Road Photo Upload**: Point your camera at the road and tap **Capture**, OR upload an image from your device/gallery beside it. The AI instantly detects potholes, measures 3D severity & cavity volume, and saves it for your approval before filing to government portals.")
 
-            cam_shot = st.camera_input("Point camera at road defect / surface", label_visibility="visible")
+            c_cam, c_up = st.columns([1, 1])
+            with c_cam:
+                st.markdown("""
+                <div style="background:#111827; border:1px solid #1e293b; border-radius:10px; padding:10px 14px; margin-bottom:8px;">
+                    <div style="font-weight:700; color:#38bdf8; font-size:0.92rem;">📷 Option 1: Live Camera</div>
+                    <div style="font-size:0.74rem; color:#94a3b8;">Point smartphone or webcam directly at pavement</div>
+                </div>
+                """, unsafe_allow_html=True)
+                cam_shot = st.camera_input("Point camera at road defect / surface", label_visibility="collapsed", key="starting_cam_shot")
 
-            if cam_shot is not None:
-                file_bytes = np.asarray(bytearray(cam_shot.read()), dtype=np.uint8)
-                shot_bgr   = cv2.imdecode(file_bytes, cv2.IMREAD_COLOR)
+            with c_up:
+                st.markdown("""
+                <div style="background:#111827; border:1px solid #1e293b; border-radius:10px; padding:10px 14px; margin-bottom:8px;">
+                    <div style="font-weight:700; color:#38bdf8; font-size:0.92rem;">📁 Option 2: Upload Photo</div>
+                    <div style="font-size:0.74rem; color:#94a3b8;">Select from Gallery, camera roll, or file folder</div>
+                </div>
+                """, unsafe_allow_html=True)
+                up_shot = st.file_uploader("Upload road defect photo (JPG, JPEG, PNG)", type=["jpg", "jpeg", "png"], label_visibility="collapsed", key="starting_up_shot")
+
+            active_bytes = None
+            img_filename = None
+            src_label = None
+            exif_lat, exif_lon = None, None
+
+            if up_shot is not None:
+                raw_bytes = up_shot.getvalue()
+                active_bytes = np.asarray(bytearray(raw_bytes), dtype=np.uint8)
+                timestamp_now = datetime.now().strftime("%Y%m%d_%H%M%S")
+                img_filename = f"upload_{timestamp_now}_{up_shot.name}"
+                src_label = f"Uploaded Photo ({up_shot.name})"
+
+                # Check if uploaded photo contains smartphone EXIF GPS
+                os.makedirs("temp", exist_ok=True)
+                temp_up = os.path.join("temp", f"tmp_{img_filename}")
+                with open(temp_up, "wb") as f_up:
+                    f_up.write(raw_bytes)
+                exif_lat, exif_lon = extract_image_gps(temp_up)
+
+            elif cam_shot is not None:
+                raw_bytes = cam_shot.getvalue()
+                active_bytes = np.asarray(bytearray(raw_bytes), dtype=np.uint8)
+                timestamp_now = datetime.now().strftime("%Y%m%d_%H%M%S")
+                img_filename = f"camera_snap_{timestamp_now}.jpg"
+                src_label = "Live Browser Camera"
+
+            if active_bytes is not None:
+                shot_bgr = cv2.imdecode(active_bytes, cv2.IMREAD_COLOR)
 
                 if shot_bgr is not None:
-                    with st.spinner("Analyzing road surface with unsupervised ML engine…"):
-                        timestamp_now = datetime.now().strftime("%Y%m%d_%H%M%S")
-                        img_filename = f"camera_snap_{timestamp_now}.jpg"
+                    with st.spinner("Analyzing road surface with AI detection engine…"):
                         res = run_inference_on_image(
                             shot_bgr, artifacts,
                             image_name=img_filename,
@@ -1027,25 +1067,25 @@ def main():
                     ev_path = os.path.join("outputs/evidence", img_filename)
                     cv2.imwrite(ev_path, annotated)
 
-                    active_lat = st.session_state.get("user_lat", curr_lat)
-                    active_lon = st.session_state.get("user_lon", curr_lon)
+                    target_lat = exif_lat if exif_lat is not None else st.session_state.get("user_lat", curr_lat)
+                    target_lon = exif_lon if exif_lon is not None else st.session_state.get("user_lon", curr_lon)
                     active_road = st.session_state.get("user_road", curr_road)
-                    active_map_link = f"https://www.google.com/maps?q={active_lat},{active_lon}"
+                    active_map_link = f"https://www.google.com/maps?q={target_lat},{target_lon}"
 
                     # Persist detections into database as Pending Review with ACTIVE GPS
                     if n_cands > 0:
                         for idx, r in cand_df.iterrows():
-                            d_id = f"CAM_{timestamp_now}_{r.get('candidate_id', idx)}"
+                            d_id = f"DEF_{timestamp_now}_{r.get('candidate_id', idx)}"
                             insert_defect(
                                 detection_id=d_id,
                                 track_id=str(r.get("candidate_id", idx)),
-                                latitude=active_lat, longitude=active_lon,
+                                latitude=target_lat, longitude=target_lon,
                                 severity_category=r.get("severity_category", "Medium"),
                                 severity_score=float(r.get("severity_score", 0.5)),
                                 anomaly_score=float(r.get("avg_anomaly_score", -0.2)),
                                 pixel_area=int(r.get("pixel_area", 4000)),
                                 image_path=ev_path,
-                                source_media=f"Live Camera ({active_road})",
+                                source_media=f"{src_label} ({active_road})",
                             )
 
                     # View detection
@@ -1055,9 +1095,11 @@ def main():
                     with c_view2:
                         if n_cands > 0:
                             st.success(f"🚨 **{n_cands} Road Defect(s) Detected & Saved!**")
+                            exif_note = f" (📍 EXIF GPS)" if exif_lat is not None else ""
                             st.markdown(f"""
                             - **Status**: ⏳ Saved to **Citizen Review Queue** (`Pending Review`)
-                            - **Location**: 📍 `{active_road}` ({active_lat:.5f}, {active_lon:.5f}) · [Google Maps]({active_map_link})
+                            - **Location**: 📍 `{active_road}` ({target_lat:.5f}, {target_lon:.5f}){exif_note} · [Google Maps]({active_map_link})
+                            - **Source**: `{src_label}`
                             - **Severity**: {res.get('high_severity_count', 0)} High · {res.get('medium_severity_count', 0)} Medium · {res.get('low_severity_count', 0)} Low
                             - **Action**: Approve below to file directly to government authorities, or reject if false alarm.
                             """)
@@ -1073,17 +1115,17 @@ def main():
                                 if st.button(f"✅ Accept All Detected ({n_cands})", type="primary", use_container_width=True, key=f"btn_cam_ap_{timestamp_now}"):
                                     last_ref = ""
                                     for idx, r in cand_df.iterrows():
-                                        d_id = f"CAM_{timestamp_now}_{r.get('candidate_id', idx)}"
+                                        d_id = f"DEF_{timestamp_now}_{r.get('candidate_id', idx)}"
                                         d_payload = {
                                             "detection_id": d_id,
-                                            "latitude": active_lat, "longitude": active_lon,
+                                            "latitude": target_lat, "longitude": target_lon,
                                             "road": active_road,
                                             "severity_category": r.get("severity_category", "Medium"),
                                             "severity_score": float(r.get("severity_score", 0.5)),
                                             "anomaly_score": float(r.get("avg_anomaly_score", -0.2)),
                                             "pixel_area": int(r.get("pixel_area", 4000)),
                                             "image_path": ev_path,
-                                            "source_media": f"Live Camera ({active_road})",
+                                            "source_media": f"{src_label} ({active_road})",
                                         }
                                         d_res = dispatch_grievance_to_portal(d_payload, portal_key=auth_choice)
                                         last_ref = d_res["reference_number"]
@@ -1102,8 +1144,8 @@ def main():
                             with b_rej:
                                 if st.button(f"❌ Reject All ({n_cands})", use_container_width=True, key=f"btn_cam_rej_{timestamp_now}"):
                                     for idx, r in cand_df.iterrows():
-                                        d_id = f"CAM_{timestamp_now}_{r.get('candidate_id', idx)}"
-                                        disapprove_defect(d_id, reason="Rejected by citizen camera review")
+                                        d_id = f"DEF_{timestamp_now}_{r.get('candidate_id', idx)}"
+                                        disapprove_defect(d_id, reason="Rejected by citizen review")
                                     st.warning(f"Marked all {n_cands} defects as rejected.")
                                     st.rerun()
                         else:

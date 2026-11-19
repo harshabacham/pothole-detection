@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: transparent;
+    overflow: hidden;
+  }
+  .wrap {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+    padding: 4px 0;
+  }
+  .gps-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: linear-gradient(135deg, #0284c7, #2563eb);
+    color: #ffffff;
+    border: none;
+    border-radius: 8px;
+    padding: 8px 16px;
+    font-size: 0.82rem;
+    font-weight: 700;
+    cursor: pointer;
+    box-shadow: 0 4px 14px rgba(37, 99, 235, 0.35);
+    transition: all 0.2s ease;
+  }
+  .gps-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 18px rgba(37, 99, 235, 0.5);
+  }
+  .gps-status {
+    font-size: 0.8rem;
+    color: #94a3b8;
+  }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <button class="gps-btn" onclick="fetchGPS()">
+      📡 Fetch My Exact Device GPS
+    </button>
+    <span id="status" class="gps-status">Click to read mobile/laptop GPS hardware</span>
+  </div>
+
+  <script>
+    function sendMessage(type, data) {
+      window.parent.postMessage({
+        isStreamlitMessage: true,
+        type: type,
+        ...data
+      }, "*");
+    }
+
+    function init() {
+      sendMessage("streamlit:setFrameHeight", { height: 46 });
+    }
+
+    function fetchGPS() {
+      const statusEl = document.getElementById("status");
+      if (!navigator.geolocation) {
+        statusEl.innerHTML = "❌ Geolocation not supported by this browser";
+        return;
+      }
+      statusEl.innerHTML = "⏳ Accessing device GPS satellites…";
+      navigator.geolocation.getCurrentPosition(
+        function(position) {
+          const lat = position.coords.latitude;
+          const lon = position.coords.longitude;
+          const acc = position.coords.accuracy;
+          statusEl.innerHTML = `<span style="color:#4ade80; font-weight:700;">✅ GPS Fix: ${lat.toFixed(5)}, ${lon.toFixed(5)} (±${Math.round(acc)}m)</span>`;
+          sendMessage("streamlit:setComponentValue", {
+            value: {
+              latitude: lat,
+              longitude: lon,
+              accuracy: acc,
+              timestamp: Date.now()
+            }
+          });
+        },
+        function(error) {
+          statusEl.innerHTML = `<span style="color:#f87171;">⚠️ ${error.message} (Grant location permission in browser)</span>`;
+        },
+        { enableHighAccuracy: true, timeout: 12000, maximumAge: 10000 }
+      );
+    }
+
+    window.addEventListener("DOMContentLoaded", init);
+  </script>
+</body>
+</html>

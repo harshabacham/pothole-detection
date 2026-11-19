@@ -168,3 +168,22 @@ def get_device_ip_location() -> dict:
     }
 
 
+import streamlit.components.v1 as _components
+
+_GEOLOCATION_COMPONENT_DIR = os.path.join(os.path.dirname(__file__), "components", "geolocation")
+_device_geolocation_component = _components.declare_component("device_geolocation", path=_GEOLOCATION_COMPONENT_DIR)
+
+
+def render_device_gps_button(key="device_gps_btn"):
+    """
+    Renders an HTML5 Geolocation component in the user's browser.
+    Queries the client device hardware GPS (phone/laptop) via navigator.geolocation.
+    Returns dict {'latitude': float, 'longitude': float, 'accuracy': float, 'timestamp': int} or None.
+    """
+    try:
+        return _device_geolocation_component(key=key)
+    except Exception:
+        return None
+
+
+

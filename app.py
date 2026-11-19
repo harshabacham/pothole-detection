@@ -40,7 +40,7 @@ from src.database import (
     get_pending_review_defects,
     update_defect_location,
 )
-from src.gps_handler import extract_image_gps, get_device_ip_location
+from src.gps_handler import extract_image_gps, get_device_ip_location, render_device_gps_button
 from src.map_visualization import build_geographic_map
 from src.video_processor import process_road_video
 from src.gis_export import (
@@ -894,6 +894,18 @@ def main():
     status_series = defects_df["grievance_status"].fillna("Unreported") if not defects_df.empty and "grievance_status" in defects_df.columns else pd.Series(dtype=object)
     pending_count = int(status_series.isin(["Pending Review", "Unreported", "PORTAL_SYNC_QUEUED", "PENDING_USER_REVIEW"]).sum())
 
+    ROAD_PRESETS = {
+        "🏢 Bengaluru — Outer Ring Road (Bellandur)": {"road": "Outer Ring Road (Bellandur), Bengaluru", "lat": 12.9279, "lon": 77.6833},
+        "🏛️ Delhi NCR — NH-48 Express Corridor": {"road": "NH-48 Express Corridor, Delhi-Gurugram", "lat": 28.5355, "lon": 77.1235},
+        "🚗 Mumbai — Western Express Highway (Andheri)": {"road": "Western Express Highway (Andheri), Mumbai", "lat": 19.1136, "lon": 72.8697},
+        "🛣️ Hyderabad — Hitec City / Gachibowli Corridor": {"road": "Hitec City / Gachibowli Corridor, Hyderabad", "lat": 17.4435, "lon": 78.3772},
+        "🌴 Chennai — Old Mahabalipuram Road (OMR)": {"road": "Old Mahabalipuram Road (OMR), Chennai", "lat": 12.9784, "lon": 80.2432},
+        "🌾 Punjab — GT Road (NH-44 Phagwara-Jalandhar)": {"road": "GT Road (NH-44), Phagwara, Punjab", "lat": 31.2281, "lon": 75.7787},
+        "🏛️ Kolkata — EM Bypass Expressway": {"road": "Eastern Metropolitan Bypass, Kolkata", "lat": 22.5726, "lon": 88.3639},
+        "📍 Pune — Mumbai-Pune Expressway Corridor": {"road": "Mumbai-Pune Expressway, Pune", "lat": 18.7523, "lon": 73.4024},
+        "✏️ Custom Location / Enter Coordinates": None,
+    }
+
     # ── Geolocation Telemetry Initialization ──────────────────────────────
     if "user_lat" not in st.session_state or "user_lon" not in st.session_state:
         qp_lat = st.query_params.get("lat")
@@ -907,12 +919,19 @@ def main():
                 pass
         if "user_lat" not in st.session_state:
             fast_loc = get_device_ip_location()
-            st.session_state["user_lat"] = round(float(fast_loc["latitude"]), 5)
-            st.session_state["user_lon"] = round(float(fast_loc["longitude"]), 5)
-            st.session_state["user_loc_src"] = fast_loc.get("source", "Network IP Fix")
-            city_str = fast_loc.get("city", "")
-            reg_str = fast_loc.get("region", "")
-            st.session_state["user_road"] = f"{city_str}, {reg_str}" if city_str else "National Highway Corridor"
+            if fast_loc.get("country") == "India":
+                st.session_state["user_lat"] = round(float(fast_loc["latitude"]), 5)
+                st.session_state["user_lon"] = round(float(fast_loc["longitude"]), 5)
+                city_str = fast_loc.get("city", "")
+                reg_str = fast_loc.get("region", "")
+                st.session_state["user_road"] = f"{city_str}, {reg_str}" if city_str else "National Highway Corridor"
+                st.session_state["user_loc_src"] = fast_loc.get("source", "Network IP Fix")
+            else:
+                # Default to primary Indian corridor preset (never foreign cloud server)
+                st.session_state["user_lat"] = 12.9279
+                st.session_state["user_lon"] = 77.6833
+                st.session_state["user_road"] = "Outer Ring Road (Bellandur), Bengaluru"
+                st.session_state["user_loc_src"] = "Corridor Telemetry Fix"
 
     if "user_road" not in st.session_state or not st.session_state["user_road"]:
         rev = reverse_geocode_location(st.session_state["user_lat"], st.session_state["user_lon"])
@@ -950,53 +969,86 @@ def main():
             horizontal=True,
         )
 
-        curr_lat = st.session_state.get("user_lat", 28.6139)
-        curr_lon = st.session_state.get("user_lon", 77.2090)
-        curr_road = st.session_state.get("user_road", "National Highway Corridor")
-        curr_src = st.session_state.get("user_loc_src", "Network Fix")
+        # ── 1. Device Hardware GPS Fetcher (HTML5) ───────────────────────────
+        device_gps = render_device_gps_button(key="tab1_device_gps_btn")
+        if device_gps and isinstance(device_gps, dict) and "latitude" in device_gps:
+            dev_lat = round(float(device_gps["latitude"]), 5)
+            dev_lon = round(float(device_gps["longitude"]), 5)
+            dev_acc = round(float(device_gps.get("accuracy", 10)))
+            if (dev_lat != st.session_state.get("user_lat") or dev_lon != st.session_state.get("user_lon")):
+                st.session_state["user_lat"] = dev_lat
+                st.session_state["user_lon"] = dev_lon
+                rev = reverse_geocode_location(dev_lat, dev_lon)
+                st.session_state["user_road"] = rev.get("road", f"Local Road ({dev_lat:.3f}, {dev_lon:.3f})")
+                st.session_state["user_loc_src"] = f"Phone Hardware GPS (±{dev_acc}m)"
+                st.rerun()
+
+        curr_lat = st.session_state.get("user_lat", 12.9279)
+        curr_lon = st.session_state.get("user_lon", 77.6833)
+        curr_road = st.session_state.get("user_road", "Outer Ring Road (Bellandur), Bengaluru")
+        curr_src = st.session_state.get("user_loc_src", "Corridor Telemetry Fix")
         maps_link = f"https://www.google.com/maps?q={curr_lat},{curr_lon}"
 
-        with st.expander(f"📍 Location & GPS: {curr_road} ({curr_lat:.4f}° N, {curr_lon:.4f}° E)", expanded=False):
-            st.markdown(f"""
-            <div style="background:#111827; border:1px solid #1e293b; border-radius:10px; padding:14px; margin-bottom:10px;">
-                <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
-                    <div>
-                        <span style="font-size:0.72rem; text-transform:uppercase; letter-spacing:0.8px; color:#38bdf8; font-weight:700;">Active GPS Telemetry</span>
-                        <div style="font-size:1.05rem; font-weight:800; color:#f8fafc; margin-top:2px;">{curr_road}</div>
-                        <div style="font-size:0.8rem; color:#94a3b8; font-family:monospace; margin-top:2px;">
-                            Lat: {curr_lat:.5f} · Lon: {curr_lon:.5f} · <a href="{maps_link}" target="_blank" style="color:#38bdf8; text-decoration:none; font-weight:600;">🗺️ View on Google Maps</a>
-                        </div>
-                    </div>
-                    <div>
-                        <span style="background:rgba(56,189,248,0.15); color:#38bdf8; border:1px solid rgba(56,189,248,0.3); padding:4px 10px; border-radius:20px; font-size:0.75rem; font-weight:600;">
-                            🛰️ {curr_src}
-                        </span>
+        # ── 2. Visible Active Location Banner ────────────────────────────────
+        st.markdown(f"""
+        <div style="background:#111827; border:1px solid #1e293b; border-radius:12px; padding:14px 18px; margin-bottom:12px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+                <div>
+                    <span style="font-size:0.72rem; text-transform:uppercase; letter-spacing:0.8px; color:#38bdf8; font-weight:700;">📍 Active Road Telemetry & Geotag</span>
+                    <div style="font-size:1.15rem; font-weight:800; color:#f8fafc; margin-top:2px;">{curr_road}</div>
+                    <div style="font-size:0.82rem; color:#94a3b8; font-family:monospace; margin-top:3px;">
+                        Coordinates: <span style="color:#38bdf8; font-weight:700;">{curr_lat:.5f}° N, {curr_lon:.5f}° E</span> · 
+                        <a href="{maps_link}" target="_blank" style="color:#38bdf8; text-decoration:none; font-weight:700;">🗺️ View on Google Maps</a>
                     </div>
                 </div>
+                <div>
+                    <span style="background:rgba(56,189,248,0.15); color:#38bdf8; border:1px solid rgba(56,189,248,0.3); padding:5px 12px; border-radius:20px; font-size:0.78rem; font-weight:700;">
+                        🛰️ {curr_src}
+                    </span>
+                </div>
             </div>
-            """, unsafe_allow_html=True)
+        </div>
+        """, unsafe_allow_html=True)
 
-            loc_c1, loc_c2, loc_c3, loc_c4 = st.columns([1.6, 1.1, 1.1, 1])
-            with loc_c1:
-                edit_road = st.text_input("Road / Location Name", value=curr_road, key="cfg_road_name")
-            with loc_c2:
-                edit_lat = st.number_input("Latitude", value=float(curr_lat), format="%.5f", key="cfg_lat")
-            with loc_c3:
-                edit_lon = st.number_input("Longitude", value=float(curr_lon), format="%.5f", key="cfg_lon")
-            with loc_c4:
-                st.markdown("<div style='height:28px'></div>", unsafe_allow_html=True)
-                if st.button("🔄 Auto-Fix GPS", use_container_width=True, help="Re-acquire network/IP location coordinates"):
-                    refreshed = get_device_ip_location()
-                    st.session_state["user_lat"] = round(float(refreshed["latitude"]), 5)
-                    st.session_state["user_lon"] = round(float(refreshed["longitude"]), 5)
-                    st.session_state["user_road"] = f"{refreshed.get('city', 'Highway')}, {refreshed.get('region', '')}"
-                    st.session_state["user_loc_src"] = refreshed.get("source", "Network IP Fix")
+        # ── 3. Quick Preset & Manual Adjustment Toolbar ──────────────────────
+        col_preset, col_custom = st.columns([1.4, 1])
+        with col_preset:
+            preset_names = list(ROAD_PRESETS.keys())
+            sel_idx = 0
+            for i, p_name in enumerate(preset_names):
+                p_val = ROAD_PRESETS[p_name]
+                if p_val and abs(p_val["lat"] - curr_lat) < 0.05 and abs(p_val["lon"] - curr_lon) < 0.05:
+                    sel_idx = i
+                    break
+
+            chosen_preset = st.selectbox(
+                "🏙️ Quick City / Corridor Preset (Click to switch for demo)",
+                preset_names,
+                index=sel_idx,
+                key="sel_road_preset",
+            )
+            p_info = ROAD_PRESETS.get(chosen_preset)
+            if p_info is not None:
+                if (curr_lat != p_info["lat"] or curr_lon != p_info["lon"]) and "Phone Hardware GPS" not in curr_src:
+                    st.session_state["user_lat"] = p_info["lat"]
+                    st.session_state["user_lon"] = p_info["lon"]
+                    st.session_state["user_road"] = p_info["road"]
+                    st.session_state["user_loc_src"] = "Selected City Preset"
                     st.rerun()
 
-            if edit_road != curr_road or edit_lat != curr_lat or edit_lon != curr_lon:
-                st.session_state["user_road"] = edit_road
-                st.session_state["user_lat"] = edit_lat
-                st.session_state["user_lon"] = edit_lon
+        with col_custom:
+            with st.expander("✏️ Custom Road / Fine-Tune Coordinates", expanded=False):
+                edit_road = st.text_input("Custom Road Name", value=curr_road, key="cfg_road_name")
+                c_lat_inp, c_lon_inp = st.columns(2)
+                with c_lat_inp:
+                    edit_lat = st.number_input("Latitude", value=float(curr_lat), format="%.5f", key="cfg_lat")
+                with c_lon_inp:
+                    edit_lon = st.number_input("Longitude", value=float(curr_lon), format="%.5f", key="cfg_lon")
+
+                if edit_road != curr_road or edit_lat != curr_lat or edit_lon != curr_lon:
+                    st.session_state["user_road"] = edit_road
+                    st.session_state["user_lat"] = edit_lat
+                    st.session_state["user_lon"] = edit_lon
 
         if "Live Camera" in cam_mode or "Upload" in cam_mode:
             st.info("📷 **Live Camera & Road Photo Upload**: Point your camera at the road and tap **Capture**, OR upload an image from your device/gallery beside it. The AI instantly detects potholes, measures 3D severity & cavity volume, and saves it for your approval before filing to government portals.")

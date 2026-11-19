@@ -77,15 +77,27 @@ st.set_page_config(
     page_title="PotholeAI — Road Surface Intelligence Platform",
     page_icon="🛣️",
     layout="wide",
-    initial_sidebar_state="expanded",
+    initial_sidebar_state="collapsed",
 )
 
 # ---------------------------------------------------------------------------
-# Design System — Clean, Modern, Professional
+# Design System — Clean, Modern, Professional (Sidebar Removed for Maximum Screen Area)
 # ---------------------------------------------------------------------------
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+    /* ─── Hide Sidebar & Left Menu Completely ────────────────────────────── */
+    [data-testid="stSidebar"],
+    section[data-testid="stSidebar"],
+    [data-testid="collapsedControl"],
+    .stSidebar,
+    header[data-testid="stHeader"] button[kind="header"] {
+        display: none !important;
+        visibility: hidden !important;
+        width: 0 !important;
+        min-width: 0 !important;
+    }
 
     /* ─── Global Reset ─────────────────────────────────────────────────── */
     html, body, [class*="css"] {
@@ -96,66 +108,6 @@ st.markdown("""
 
     /* hide default header padding */
     .block-container { padding-top: 1rem !important; }
-
-    /* ─── Sidebar ─────────────────────────────────────────────────────── */
-    section[data-testid="stSidebar"] {
-        background: #0f172a !important;
-        border-right: 1px solid #1e293b;
-    }
-    section[data-testid="stSidebar"] * { color: #cbd5e1 !important; }
-    section[data-testid="stSidebar"] h1,
-    section[data-testid="stSidebar"] h2,
-    section[data-testid="stSidebar"] h3,
-    section[data-testid="stSidebar"] strong { color: #f1f5f9 !important; }
-    section[data-testid="stSidebar"] .stSelectbox label,
-    section[data-testid="stSidebar"] .stSlider label { color: #94a3b8 !important; }
-    section[data-testid="stSidebar"] hr { border-color: #1e293b !important; }
-    section[data-testid="stSidebar"] .stButton > button {
-        background: #1e293b !important;
-        border: 1px solid #334155 !important;
-        color: #e2e8f0 !important;
-        border-radius: 8px !important;
-        font-weight: 600 !important;
-    }
-    section[data-testid="stSidebar"] .stButton > button:hover {
-        background: #334155 !important;
-        border-color: #475569 !important;
-    }
-    .sidebar-logo {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        padding: 4px 0 16px 0;
-        margin-bottom: 8px;
-        border-bottom: 1px solid #1e293b;
-    }
-    .sidebar-logo-icon {
-        width: 36px; height: 36px;
-        background: linear-gradient(135deg, #3b82f6, #1d4ed8);
-        border-radius: 10px;
-        display: flex; align-items: center; justify-content: center;
-        font-size: 1.1rem;
-    }
-    .sidebar-logo-text { font-weight: 800; font-size: 1.0rem; color: #f1f5f9 !important; }
-    .sidebar-logo-sub  { font-size: 0.65rem; color: #64748b !important; letter-spacing: 0.5px; }
-    .sidebar-section-header {
-        font-size: 0.65rem;
-        font-weight: 700;
-        letter-spacing: 1px;
-        text-transform: uppercase;
-        color: #475569 !important;
-        padding: 10px 0 4px 0;
-        margin-top: 4px;
-    }
-    .sidebar-metric {
-        background: #1e293b;
-        border: 1px solid #334155;
-        border-radius: 8px;
-        padding: 10px 12px;
-        margin-bottom: 8px;
-    }
-    .sidebar-metric-label { font-size: 0.65rem; color: #64748b !important; text-transform: uppercase; letter-spacing: 0.5px; }
-    .sidebar-metric-value { font-size: 1.1rem; font-weight: 700; color: #f1f5f9 !important; font-family: 'JetBrains Mono', monospace; }
 
     /* ─── Page Header ──────────────────────────────────────────────────── */
     .page-header {
@@ -604,6 +556,62 @@ def render_citizen_queue_view(defects_df: pd.DataFrame, key_prefix: str = "cq"):
     kc3.metric("✅ Dispatched", len(dispatched_df))
     kc4.metric("❌ Rejected", len(disapproved_df))
 
+    # ── Bulk Batch Operations (Accept All & Reject All) ────────────────────
+    if not pending_df.empty:
+        st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
+        col_b_auth, col_b_acc, col_b_rej = st.columns([2, 1.3, 1.3])
+        with col_b_auth:
+            batch_portal = st.selectbox(
+                "Dispatch Authority for Batch Actions",
+                list(config.GOV_PORTALS.keys()),
+                key=f"{key_prefix}_batch_portal",
+                format_func=lambda k: f"{k}: {config.GOV_PORTALS[k]['name']}",
+            )
+        with col_b_acc:
+            st.markdown("<div style='height:28px'></div>", unsafe_allow_html=True)
+            if st.button(f"✅ Accept All ({len(pending_df)})", key=f"{key_prefix}_btn_accept_all", type="primary", use_container_width=True):
+                with st.spinner(f"Filing all {len(pending_df)} pending defects to {batch_portal}..."):
+                    filed_count = 0
+                    for _, prow in pending_df.iterrows():
+                        p_id = prow["detection_id"]
+                        p_payload = {
+                            "detection_id": p_id,
+                            "track_id": prow.get("track_id", "TRK_0"),
+                            "latitude": float(prow["latitude"]) if pd.notnull(prow.get("latitude")) else None,
+                            "longitude": float(prow["longitude"]) if pd.notnull(prow.get("longitude")) else None,
+                            "severity_category": prow.get("severity_category", "Medium"),
+                            "severity_score": float(prow.get("severity_score", 0.5)),
+                            "anomaly_score": float(prow.get("anomaly_score", -0.2)),
+                            "pixel_area": int(prow.get("pixel_area", 4000)),
+                            "image_path": prow.get("image_path", ""),
+                            "source_media": prow.get("source_media", "Citizen Queue"),
+                        }
+                        res = dispatch_grievance_to_portal(p_payload, portal_key=batch_portal)
+                        update_grievance_status(
+                            p_id,
+                            status="Dispatched",
+                            ref_no=res["reference_number"],
+                            portal=res["target_portal"],
+                        )
+                        CitizenNotifier().notify(
+                            event_dict={**p_payload, "reference_no": res["reference_number"], "target_portal": res["target_portal"]},
+                            notification_type="GRIEVANCE_FILED",
+                        )
+                        filed_count += 1
+                st.success(f"🎉 Successfully accepted and filed {filed_count} defects to {batch_portal}!")
+                st.rerun()
+
+        with col_b_rej:
+            st.markdown("<div style='height:28px'></div>", unsafe_allow_html=True)
+            if st.button(f"❌ Reject All ({len(pending_df)})", key=f"{key_prefix}_btn_reject_all", use_container_width=True):
+                with st.spinner(f"Rejecting all {len(pending_df)} pending defects..."):
+                    rej_count = 0
+                    for _, prow in pending_df.iterrows():
+                        disapprove_defect(prow["detection_id"], reason="Batch rejected by citizen review")
+                        rej_count += 1
+                st.warning(f"Marked {rej_count} defects as rejected.")
+                st.rerun()
+
     st.markdown("<div class='divider'></div>", unsafe_allow_html=True)
 
     filter_opts = [
@@ -759,122 +767,14 @@ def main():
     q_summary       = offline_mgr.get_queue_summary()
     is_net_online   = offline_mgr.is_online(timeout=0.25)
 
-    # ── Sidebar ────────────────────────────────────────────────────────────
-    with st.sidebar:
-        st.markdown("""
-        <div class="sidebar-logo">
-            <div class="sidebar-logo-icon">🛣️</div>
-            <div>
-                <div class="sidebar-logo-text">PotholeAI</div>
-                <div class="sidebar-logo-sub">ROAD SURFACE INTELLIGENCE</div>
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
-
-        st.markdown('<div class="sidebar-section-header">ML Engine</div>', unsafe_allow_html=True)
-        feature_mode = st.selectbox(
-            "Feature Extractor",
-            ["Deep Features (ResNet-18)", "Fast OpenCV Texture (35+ FPS)", "Handcrafted (LBP+GLCM+Edge)"],
-            label_visibility="collapsed",
-            help="Deep = ResNet-18 embeddings. Fast = C++ gradient kernels.",
-        )
-        internal_feature_mode = "texture_only" if "Fast OpenCV" in feature_mode else feature_mode
-
-        detector_mode = st.selectbox(
-            "Anomaly Detector",
-            [
-                "YOLOv8 Deep Neural (Fast & Accurate)",
-                "Standard Isolation Forest",
-                "Extended Isolation Forest (EIF)",
-                "Ensemble (IForest + EIF)",
-            ],
-            index=0,
-            help="YOLOv8 = Deep neural pothole detector. IForest/EIF = Unsupervised anomaly detection.",
-        )
-
-        clustering_mode = st.selectbox(
-            "Spatial Clustering",
-            ["HDBSCAN (Adaptive Density)", "DBSCAN (Fixed Radius)"],
-            index=0,
-            help="HDBSCAN adapts automatically across varying defect densities without a fixed epsilon.",
-        )
-
-        col_adv1, col_adv2 = st.columns(2)
-        with col_adv1:
-            use_pca_recon = st.checkbox("PCA Recon Error", value=True, help="Secondary unsupervised signal: projection MSE from normal manifold.")
-        with col_adv2:
-            auto_night_vision = st.checkbox("Night-Vision Boost", value=True, help="Adaptive illumination for dark/night road scenes.")
-
-        st.markdown(f"""
-        <div class="sidebar-metric">
-            <div class="sidebar-metric-label">Active Stack</div>
-            <div class="sidebar-metric-value" style="font-size:0.75rem; line-height:1.2;">
-                {feature_mode.split("(")[0].strip()}<br>
-                <span style="color:#38bdf8;">{detector_mode.split("(")[0].strip()}</span> · 
-                <span style="color:#a78bfa;">{clustering_mode.split("(")[0].strip()}</span>
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
-
-        with st.expander("🎓 Unsupervised ML Viva Guide", expanded=False):
-            st.markdown(r"""
-            **Concepts used in this system:**
-            1. **PCA (16-D)**: Unsupervised dimensionality reduction removing covariance. Residual reconstruction error ($MSE$) acts as an outlier metric.
-            2. **Isolation Forest**: Isolates anomalies in fewer random tree splits ($\bar{h}(x) \ll c(n)$).
-            3. **Extended IForest (EIF)**: Random hyperplane cuts avoiding axis-aligned bias.
-            4. **HDBSCAN**: Density-based hierarchical clustering; assigns label `-1` to candidate road distress noise points without manual $\epsilon$.
-            5. **Texture Analytics**: LBP uniform patterns & GLCM co-occurrence matrix for surface roughness.
-            """)
-
-        st.markdown('<div class="sidebar-section-header">Pipeline Stats</div>', unsafe_allow_html=True)
-        col_sb1, col_sb2 = st.columns(2)
-        with col_sb1:
-            st.markdown(f"""
-            <div class="sidebar-metric">
-                <div class="sidebar-metric-label">Records</div>
-                <div class="sidebar-metric-value">{total_records}</div>
-            </div>
-            """, unsafe_allow_html=True)
-        with col_sb2:
-            st.markdown(f"""
-            <div class="sidebar-metric">
-                <div class="sidebar-metric-label">Critical</div>
-                <div class="sidebar-metric-value" style="color:#f87171 !important">{high_count}</div>
-            </div>
-            """, unsafe_allow_html=True)
-
-        st.markdown('<div class="sidebar-section-header">Connectivity</div>', unsafe_allow_html=True)
-        net_color  = "#4ade80" if is_net_online else "#f87171"
-        net_label  = "Online" if is_net_online else "Offline"
-        st.markdown(f"""
-        <div class="sidebar-metric">
-            <div class="sidebar-metric-label">Network</div>
-            <div class="sidebar-metric-value" style="color:{net_color} !important; font-size:0.9rem;">{net_label} · {q_summary['pending_count']} queued</div>
-        </div>
-        """, unsafe_allow_html=True)
-
-        if st.button("Flush Offline Queue", use_container_width=True):
-            flushed = offline_mgr.flush_queue()
-            st.success(f"Flushed {flushed} queued complaints.")
-            st.rerun()
-
-        st.markdown('<div class="sidebar-section-header">Model Configuration</div>', unsafe_allow_html=True)
-        st.caption(f"Patch: {config.DEFAULT_PATCH_SIZE}×{config.DEFAULT_PATCH_SIZE} px")
-        st.caption(f"Contamination: {config.IFOREST_CONTAMINATION*100:.0f}%")
-        st.caption("Unsupervised: PCA (16-D) + Isolation Forest")
-
-        st.markdown("---")
-        # Pipeline readiness check
-        is_ready, missing_models = check_pipeline_readiness()
-        if not is_ready:
-            with st.spinner("Calibrating models on first launch…"):
-                from auto_setup import ensure_models_and_data_ready
-                ensure_models_and_data_ready(verbose=False)
-                st.cache_resource.clear()
-            is_ready, _ = check_pipeline_readiness()
-
-        status_icon = "✅" if is_ready else "⚠️"
-        st.caption(f"{status_icon} Pipeline {'Ready' if is_ready else 'Needs Setup'}")
+    # ── Pipeline readiness check ───────────────────────────────────────────
+    is_ready, missing_models = check_pipeline_readiness()
+    if not is_ready:
+        with st.spinner("Calibrating models on first launch…"):
+            from auto_setup import ensure_models_and_data_ready
+            ensure_models_and_data_ready(verbose=False)
+            st.cache_resource.clear()
+        is_ready, _ = check_pipeline_readiness()
 
     # ── Load ML artifacts ──────────────────────────────────────────────────
     artifacts = get_cached_models()
@@ -934,6 +834,54 @@ def main():
         </div>
     </div>
     """, unsafe_allow_html=True)
+
+    # ── ML Detection Engine Toolbar (Full-Width Responsive Settings) ───────
+    with st.expander("⚙️  ML Detection Engine & Viva Settings (YOLOv8 & Unsupervised ML)", expanded=False):
+        c_set1, c_set2, c_set3, c_set4 = st.columns(4)
+        with c_set1:
+            detector_mode = st.selectbox(
+                "Anomaly Detector",
+                [
+                    "YOLOv8 Deep Neural (Fast & Accurate)",
+                    "Standard Isolation Forest",
+                    "Extended Isolation Forest (EIF)",
+                    "Ensemble (IForest + EIF)",
+                ],
+                index=0,
+                help="YOLOv8 = Deep neural pothole detector. IForest/EIF = Unsupervised anomaly detection.",
+            )
+        with c_set2:
+            feature_mode = st.selectbox(
+                "Feature Extractor",
+                ["Deep Features (ResNet-18)", "Fast OpenCV Texture (35+ FPS)", "Handcrafted (LBP+GLCM+Edge)"],
+                index=0,
+                help="Deep = ResNet-18 embeddings. Fast = C++ gradient kernels.",
+            )
+            internal_feature_mode = "texture_only" if "Fast OpenCV" in feature_mode else feature_mode
+        with c_set3:
+            clustering_mode = st.selectbox(
+                "Spatial Clustering",
+                ["HDBSCAN (Adaptive Density)", "DBSCAN (Fixed Radius)"],
+                index=0,
+                help="HDBSCAN adapts automatically across varying defect densities without a fixed epsilon.",
+            )
+        with c_set4:
+            c_nv, c_pca = st.columns(2)
+            with c_nv:
+                auto_night_vision = st.checkbox("Night-Vision Boost", value=True, help="Adaptive illumination for dark/night road scenes.")
+            with c_pca:
+                use_pca_recon = st.checkbox("PCA Recon Error", value=True, help="Secondary unsupervised signal: projection MSE from normal manifold.")
+
+        st.caption(f"Active Pipeline: {detector_mode} · {feature_mode} · {clustering_mode} | Offline Sync: {q_summary['pending_count']} pending")
+        with st.expander("🎓 Unsupervised ML Viva Guide", expanded=False):
+            st.markdown(r"""
+            **Concepts used in this system:**
+            1. **PCA (16-D)**: Unsupervised dimensionality reduction removing covariance. Residual reconstruction error ($MSE$) acts as an outlier metric.
+            2. **Isolation Forest**: Isolates anomalies in fewer random tree splits ($\bar{h}(x) \ll c(n)$).
+            3. **Extended IForest (EIF)**: Random hyperplane cuts avoiding axis-aligned bias.
+            4. **HDBSCAN**: Density-based hierarchical clustering; assigns label `-1` to candidate road distress noise points without manual $\epsilon$.
+            5. **Texture Analytics**: LBP uniform patterns & GLCM co-occurrence matrix for surface roughness.
+            """)
 
     status_series = defects_df["grievance_status"].fillna("Unreported") if not defects_df.empty and "grievance_status" in defects_df.columns else pd.Series(dtype=object)
     pending_count = int(status_series.isin(["Pending Review", "Unreported", "PORTAL_SYNC_QUEUED", "PENDING_USER_REVIEW"]).sum())
@@ -1037,38 +985,40 @@ def main():
                             )
                             b_app, b_rej = st.columns(2)
                             with b_app:
-                                if st.button("✅ Approve & File", type="primary", use_container_width=True, key=f"btn_cam_ap_{timestamp_now}"):
-                                    top_r = cand_df.iloc[0]
-                                    top_id = f"CAM_{timestamp_now}_{top_r.get('candidate_id', 0)}"
-                                    d_payload = {
-                                        "detection_id": top_id,
-                                        "latitude": None, "longitude": None,
-                                        "severity_category": top_r.get("severity_category", "Medium"),
-                                        "severity_score": float(top_r.get("severity_score", 0.5)),
-                                        "anomaly_score": float(top_r.get("avg_anomaly_score", -0.2)),
-                                        "pixel_area": int(top_r.get("pixel_area", 4000)),
-                                        "image_path": ev_path,
-                                        "source_media": "Live Browser Camera",
-                                    }
-                                    d_res = dispatch_grievance_to_portal(d_payload, portal_key=auth_choice)
-                                    update_grievance_status(
-                                        detection_id=top_id,
-                                        status="Dispatched",
-                                        ref_no=d_res["reference_number"],
-                                        portal=d_res["target_portal"],
-                                    )
-                                    CitizenNotifier().notify(
-                                        event_dict={**d_payload, "reference_no": d_res["reference_number"], "target_portal": d_res["target_portal"]},
-                                        notification_type="GRIEVANCE_FILED",
-                                    )
-                                    st.success(f"✅ Filed to {d_res['target_portal']}! Ref: {d_res['reference_number']}")
+                                if st.button(f"✅ Accept All Detected ({n_cands})", type="primary", use_container_width=True, key=f"btn_cam_ap_{timestamp_now}"):
+                                    last_ref = ""
+                                    for idx, r in cand_df.iterrows():
+                                        d_id = f"CAM_{timestamp_now}_{r.get('candidate_id', idx)}"
+                                        d_payload = {
+                                            "detection_id": d_id,
+                                            "latitude": None, "longitude": None,
+                                            "severity_category": r.get("severity_category", "Medium"),
+                                            "severity_score": float(r.get("severity_score", 0.5)),
+                                            "anomaly_score": float(r.get("avg_anomaly_score", -0.2)),
+                                            "pixel_area": int(r.get("pixel_area", 4000)),
+                                            "image_path": ev_path,
+                                            "source_media": "Live Browser Camera",
+                                        }
+                                        d_res = dispatch_grievance_to_portal(d_payload, portal_key=auth_choice)
+                                        last_ref = d_res["reference_number"]
+                                        update_grievance_status(
+                                            detection_id=d_id,
+                                            status="Dispatched",
+                                            ref_no=d_res["reference_number"],
+                                            portal=d_res["target_portal"],
+                                        )
+                                        CitizenNotifier().notify(
+                                            event_dict={**d_payload, "reference_no": d_res["reference_number"], "target_portal": d_res["target_portal"]},
+                                            notification_type="GRIEVANCE_FILED",
+                                        )
+                                    st.success(f"✅ Accepted & filed all {n_cands} defects to {auth_choice}! Latest Ref: {last_ref}")
                                     st.rerun()
                             with b_rej:
-                                if st.button("❌ Reject", use_container_width=True, key=f"btn_cam_rej_{timestamp_now}"):
+                                if st.button(f"❌ Reject All ({n_cands})", use_container_width=True, key=f"btn_cam_rej_{timestamp_now}"):
                                     for idx, r in cand_df.iterrows():
                                         d_id = f"CAM_{timestamp_now}_{r.get('candidate_id', idx)}"
                                         disapprove_defect(d_id, reason="Rejected by citizen camera review")
-                                    st.warning("Marked as rejected.")
+                                    st.warning(f"Marked all {n_cands} defects as rejected.")
                                     st.rerun()
                         else:
                             st.info("✅ Pavement surface is clear. No structural cavities detected.")
